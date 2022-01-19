@@ -1,0 +1,12 @@
+@function grid($cols: 1, $trailing: false) {
+  $trail: "0rem";
+  @if $trailing == false {
+    $trail: var(--grid-gutter);
+  }
+  @return calc(
+    (
+        (var(--grid-width) + var(--grid-gutter) - var(--grid-padding) * 2) /
+          var(--grid-column-count) * #{$cols}
+      ) - #{$trail}
+  );
+}

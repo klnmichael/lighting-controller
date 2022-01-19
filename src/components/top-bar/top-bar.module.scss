@@ -1,0 +1,35 @@
+.container {
+  width: 100%;
+  height: 6rem;
+  background: var(--off-black);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.current {
+  width: var(--device-width);
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+  position: absolute;
+  left: 0;
+}
+.input {
+  span {
+    margin-right: 1.5rem;
+    font-size: 1.4rem;
+    font-weight: var(--font-weight-bold);
+  }
+  input {
+    width: 8rem;
+    background-color: var(--dark-gray);
+    font-size: 1.8rem;
+    font-weight: var(--font-weight-bold);
+    text-align: center;
+    color: var(--white);
+  }
+
+  + .input {
+    margin-left: 10rem;
+  }
+}

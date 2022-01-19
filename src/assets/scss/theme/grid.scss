@@ -1,0 +1,23 @@
+@import "@/scss/mixins/grid", "@/scss/mixins/media-query";
+
+:root {
+  --grid-width: 100vw;
+  --grid-max-width: 144rem;
+  --grid-container-max-width: 256rem;
+  --grid-height: 100vh;
+  --grid-padding: 2.4rem;
+  --grid-column-count: 12;
+  --grid-gutter: 1rem;
+
+  @include mq(medium) {
+    --grid-padding: 5.8rem;
+    --grid-gutter: 2rem;
+  }
+  @include mq(large) {
+    --grid-width: 144rem;
+  }
+
+  @for $i from 1 through 12 {
+    --grid-#{$i}col: #{grid($i)};
+  }
+}

@@ -1,0 +1,79 @@
+@import "@/scss/mixins/font-face", "@/scss/mixins/media-query";
+
+@include font-face(
+  "Benton Sans",
+  "../../fonts/open-sans-v27-latin-regular",
+  400
+);
+@include font-face("Open Sans", "../../fonts/open-sans-v27-latin-500", 500);
+@include font-face("Open Sans", "../../fonts/open-sans-v27-latin-700", 700);
+
+:root {
+  --rem-base: 62.5%;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  --font-family: "Open Sans", sans-serif;
+
+  --font-size-body: 1.2rem;
+
+  --font-size-h1: 2.4rem;
+  --font-size-h2: 2.2rem;
+  --font-size-h3: 1.8rem;
+  --font-size-h4: 2rem;
+  --font-size-h5: 1.8rem;
+  --font-size-h6: 1.6rem;
+
+  @include mq(medium) {
+    --font-size-body: 1.4rem;
+
+    --font-size-h1: 4.8rem;
+    --font-size-h2: 3.2rem;
+    --font-size-h3: 2.8rem;
+    --font-size-h4: 2.2rem;
+    --font-size-h5: 2rem;
+    --font-size-h6: 1.8rem;
+  }
+
+  @include mq(large) {
+    --font-size-body: 1.8rem;
+
+    --font-size-h1: 7.2rem;
+    --font-size-h2: 4.8rem;
+    --font-size-h3: 3rem;
+    --font-size-h4: 2.8rem;
+    --font-size-h5: 2.2rem;
+    --font-size-h6: 2.2rem;
+  }
+
+  --line-height-body: 1.5;
+
+  --line-height-h1: 1.35;
+  --line-height-h2: 1.25;
+  --line-height-h3: 1.35;
+  --line-height-h4: 1.35;
+  --line-height-h5: 1.35;
+  --line-height-h6: 1.35;
+
+  @include mq(large) {
+    --line-height-h2: 1.35;
+  }
+
+  --font-weight-h1: var(--font-weight-medium);
+  --font-weight-h2: var(--font-weight-medium);
+  --font-weight-h3: var(--font-weight-medium);
+  --font-weight-h4: var(--font-weight-bold);
+  --font-weight-h5: var(--font-weight-bold);
+  --font-weight-h6: var(--font-weight-medium);
+
+  --letter-spacing-body: 0;
+
+  --letter-spacing-h1: 0;
+  --letter-spacing-h2: 0;
+  --letter-spacing-h3: 0;
+  --letter-spacing-h4: 0;
+  --letter-spacing-h5: 0;
+  --letter-spacing-h6: 0;
+}

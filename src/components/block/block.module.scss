@@ -1,0 +1,34 @@
+.container {
+  height: 100%;
+  border-radius: 0.5rem;
+  position: absolute;
+  top: 0;
+
+  &:focus-within,
+  &:hover {
+    outline: 0.2rem solid var(--white);
+  }
+}
+.color {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+}
+.alpha--0,
+.alpha--1 {
+  width: 2rem;
+  height: 2rem;
+  background-color: red;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+}
+.alpha--0 {
+  left: 0;
+}
+.alpha--1 {
+  right: 0;
+}
