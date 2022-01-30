@@ -21,8 +21,13 @@ export interface Block {
 }
 
 export interface Device {
-  id: string;
-  tracks: Block[][];
+  name: string;
+  bluetoothDevice: BluetoothDevice;
+  tracks: string[];
+}
+
+export interface Tracks {
+  [id: string]: Block[];
 }
 
 interface SiteStateContextValue {
@@ -39,26 +44,16 @@ interface SiteStateContextValue {
   setBars: (value: number) => void;
   setBpm: (value: number) => void;
   devices: Device[];
+  tracks: Tracks;
   addDevice: () => void;
   removeDevice: (index: number) => void;
-  updateTime: (
-    deviceIndex: number,
-    trackIndex: number,
-    blockIndex: number,
-    time: number[]
-  ) => void;
-  updateColor: (
-    deviceIndex: number,
-    trackIndex: number,
-    blockIndex: number,
-    color: number[]
-  ) => void;
-  updateAlpha: (
-    deviceIndex: number,
-    trackIndex: number,
-    blockIndex: number,
-    alpha: number[]
-  ) => void;
+  addTrack: (deviceIndex: number) => void;
+  removeTrack: (deviceIndex: number, trackIndex: number) => void;
+  addBlock: (trackId: string, block: Block) => void;
+  removeBlock: (trackId: string, blockIndex: number) => void;
+  updateTime: (trackId: string, blockIndex: number, time: number[]) => void;
+  updateColor: (trackId: string, blockIndex: number, color: number[]) => void;
+  updateAlpha: (trackId: string, blockIndex: number, alpha: number[]) => void;
 }
 
 const initialState: SiteStateContextValue = {
@@ -72,8 +67,13 @@ const initialState: SiteStateContextValue = {
   setBars: () => {},
   setBpm: () => {},
   devices: [],
+  tracks: {},
   addDevice: () => {},
   removeDevice: () => {},
+  addTrack: () => {},
+  removeTrack: () => {},
+  addBlock: () => {},
+  removeBlock: () => {},
   updateTime: () => {},
   updateColor: () => {},
   updateAlpha: () => {},
@@ -103,58 +103,41 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
   const refBars = useRef(initialState.bars);
   const refBpm = useRef(initialState.bpm);
 
-  const [devices, setDevices] = useState<Device[]>([
-    {
-      id: "test-0",
-      tracks: [
-        [
-          {
-            time: [0, 0.5],
-            color: [255, 255, 255],
-            alpha: [1, 0],
-          },
-          {
-            time: [0.5, 1],
-            color: [255, 255, 255],
-            alpha: [1, 0],
-          },
-        ],
-        [
-          {
-            time: [0, 1],
-            color: [255, 0, 180],
-            alpha: [1, 1],
-          },
-        ],
-      ],
-    },
-    {
-      id: "test-1",
-      tracks: [
-        [
-          {
-            time: [0, 0.5],
-            color: [255, 255, 255],
-            alpha: [1, 0],
-          },
-          {
-            time: [0.5, 1],
-            color: [255, 255, 255],
-            alpha: [1, 0],
-          },
-        ],
-        [
-          {
-            time: [0, 1],
-            color: [255, 0, 180],
-            alpha: [1, 1],
-          },
-        ],
-      ],
-    },
-  ]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [tracks, setTracks] = useState<Tracks>({});
+
+  // const [devices, setDevices] = useState<Device[]>(
+  //   JSON.parse(
+  //     typeof window !== "undefined" && window.localStorage.getItem("lc-devices")
+  //       ? String(window.localStorage.getItem("lc-devices"))
+  //       : "[]"
+  //   )
+  // );
+  // const [tracks, setTracks] = useState<Tracks>(
+  //   JSON.parse(
+  //     typeof window !== "undefined" && window.localStorage.getItem("lc-tracks")
+  //       ? String(window.localStorage.getItem("lc-tracks"))
+  //       : "{}"
+  //   )
+  // );
+
+  // useEffect(() => {
+  //   const serializedDevices = JSON.stringify(devices);
+  //   const serializedTracks = JSON.stringify(tracks);
+  //   if (serializedDevices !== window.localStorage.getItem("lc-devices")) {
+  //     window.localStorage.setItem("lc-devices", serializedDevices);
+  //   }
+  //   if (serializedTracks !== window.localStorage.getItem("lc-tracks")) {
+  //     window.localStorage.setItem("lc-tracks", serializedTracks);
+  //   }
+  // }, [devices, tracks]);
+
+  const generateId = () => {
+    return Math.random().toString(16).slice(2);
+  };
 
   const runFrame = (time: number) => {
+    if (!refPlaying.current) return;
     rafRef.current = requestAnimationFrame(runFrame);
     if (!refPlayTime.current) refPlayTime.current = time;
     const bar =
@@ -162,19 +145,12 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
       refBars.current;
     const beat = (bar - Math.floor(bar)) * refBeats.current;
     const progress = bar / refBars.current;
-    const updateValues = refPlaying.current
-      ? {
-          time: time - refPlayTime.current,
-          progress,
-          bar: Math.floor(bar) + 1,
-          beat: Math.floor(beat) + 1,
-        }
-      : {
-          time: 0,
-          progress: 0,
-          bar: 0,
-          beat: 0,
-        };
+    const updateValues = {
+      time: time - refPlayTime.current,
+      progress,
+      bar: Math.floor(bar) + 1,
+      beat: Math.floor(beat) + 1,
+    };
     rafListenersRef.current.forEach((listener) => {
       if (listener && listener.update) {
         listener.changed = listener.update(updateValues);
@@ -199,96 +175,117 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
     delete rafListenersRef.current[index];
   };
 
-  const addDevice = () => {
-    setDevices((devices) => {
-      return [
-        ...devices,
-        {
-          id: "test",
-          tracks: [[], []],
-        },
-      ];
-    });
+  const addDevice = async () => {
+    navigator.bluetooth
+      .requestDevice({
+        filters: [{ namePrefix: "LEDBlue-" }],
+        optionalServices: [0xffe5],
+      })
+      .then((bluetoothDevice) => {
+        if (!bluetoothDevice) return;
+        const name = bluetoothDevice.name?.trim() || generateId();
+        if (devices.find((d) => d.name === name)) return;
+        const trackIds = [generateId(), generateId()];
+        setTracks((tracks) => {
+          return {
+            ...tracks,
+            [trackIds[0]]: [],
+            [trackIds[1]]: [],
+          };
+        });
+        setDevices((devices) => {
+          return [
+            ...devices,
+            {
+              name,
+              bluetoothDevice,
+              tracks: trackIds,
+            },
+          ];
+        });
+      })
+      .catch((e) => {});
   };
 
   const removeDevice = (index: number) => {
     setDevices((devices) => {
-      return devices.splice(index, 1);
+      const updatedDevices = [...devices];
+      updatedDevices.splice(index, 1);
+      return updatedDevices;
     });
   };
 
   const addTrack = (deviceIndex: number) => {
+    const trackId = generateId();
     setDevices((devices) => {
       const updatedDevices = [...devices];
-      updatedDevices[deviceIndex].tracks.push([]);
+      const updatedTracks = devices[deviceIndex].tracks;
+      updatedDevices[deviceIndex].tracks = [...updatedTracks, trackId];
       return updatedDevices;
+    });
+    setTracks((tracks) => {
+      return {
+        ...tracks,
+        [trackId]: [],
+      };
     });
   };
 
   const removeTrack = (deviceIndex: number, trackIndex: number) => {
     setDevices((devices) => {
-      const updatedDevices = [...devices];
-      updatedDevices[deviceIndex].tracks.splice(trackIndex, 1);
-      return updatedDevices;
+      devices[deviceIndex].tracks.splice(trackIndex, 1);
+      return devices;
     });
   };
 
-  const addBlock = (deviceIndex: number, trackIndex: number, block: Block) => {
-    setDevices((devices) => {
-      const updatedDevices = [...devices];
-      updatedDevices[deviceIndex].tracks[trackIndex].push(block);
-      return updatedDevices;
+  const addBlock = (trackId: string, block: Block) => {
+    setTracks((tracks) => {
+      const updatedTracks = { ...tracks };
+      const updatedBlocks = tracks[trackId];
+      updatedTracks[trackId] = [...updatedBlocks, block];
+      return updatedTracks;
     });
   };
 
-  const removeBlock = (
-    deviceIndex: number,
-    trackIndex: number,
-    blockIndex: number
-  ) => {
-    setDevices((devices) => {
-      const updatedDevices = [...devices];
-      updatedDevices[deviceIndex].tracks[trackIndex].splice(blockIndex, 1);
-      return updatedDevices;
+  const removeBlock = (trackId: string, blockIndex: number) => {
+    setTracks((tracks) => {
+      const updatedTracks = { ...tracks };
+      const updatedBlocks = tracks[trackId];
+      updatedTracks[trackId] = [...updatedBlocks];
+      updatedTracks[trackId].splice(blockIndex, 1);
+      return updatedTracks;
     });
   };
 
-  const updateTime = (
-    deviceIndex: number,
-    trackIndex: number,
-    blockIndex: number,
-    time: number[]
-  ) => {
-    setDevices((devices) => {
-      const updatedDevices = [...devices];
-      updatedDevices[deviceIndex].tracks[trackIndex][blockIndex].time = time;
-      return updatedDevices;
+  const updateTime = (trackId: string, blockIndex: number, time: number[]) => {
+    setTracks((tracks) => {
+      const updatedTracks = { ...tracks };
+      updatedTracks[trackId][blockIndex].time = time;
+      return updatedTracks;
     });
   };
 
   const updateColor = (
-    deviceIndex: number,
-    trackIndex: number,
+    trackId: string,
     blockIndex: number,
     color: number[]
   ) => {
-    setDevices((devices) => {
-      const updatedDevices = [...devices];
-      updatedDevices[deviceIndex].tracks[trackIndex][blockIndex].color = color;
-      return updatedDevices;
+    setTracks((tracks) => {
+      const updatedTracks = { ...tracks };
+      updatedTracks[trackId][blockIndex].color = color;
+      return updatedTracks;
     });
   };
 
   const updateAlpha = (
-    deviceIndex: number,
-    trackIndex: number,
+    trackId: string,
     blockIndex: number,
     alpha: number[]
   ) => {
-    setDevices((devices) => {
-      const updatedDevices = [...devices];
-      updatedDevices[deviceIndex].tracks[trackIndex][blockIndex].alpha = alpha;
-      return updatedDevices;
+    setTracks((tracks) => {
+      const updatedTracks = { ...tracks };
+      updatedTracks[trackId][blockIndex].alpha = alpha;
+      return updatedTracks;
     });
   };
 
@@ -296,9 +293,11 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
     // console.log(e.code);
     switch (e.code) {
       case "Space":
+        e.preventDefault();
         setPlaying(!playing);
       case "Enter":
       case "NumpadEnter":
+        e.preventDefault();
         refPlayTime.current = 0;
     }
   };
@@ -331,8 +330,13 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
     setBars,
     setBpm,
     devices,
+    tracks,
     addDevice,
     removeDevice,
+    addTrack,
+    removeTrack,
+    addBlock,
+    removeBlock,
     updateTime,
     updateColor,
     updateAlpha,
