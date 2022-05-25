@@ -12,6 +12,7 @@ export type Props = {
 const Device = ({ index: deviceIndex, device }: Props) => {
   const refBulb = useRef(null);
   const refBackgroundColor = useRef("rgb(0, 0, 0)");
+  const busy = useRef(false);
 
   const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic>();
   const connectedRef = useRef(false);
@@ -35,7 +36,7 @@ const Device = ({ index: deviceIndex, device }: Props) => {
   };
 
   const updateLight = (color: string) => {
-    if (connectedRef.current && color !== colorRef.current) {
+    if (connectedRef.current && !busy.current && color !== colorRef.current) {
       const hex = `56${color}00f0aa`;
       let array = new Uint8Array(
         (hex.match(/[\da-f]{2}/gi) || []).map((h) => {
@@ -43,7 +44,14 @@ const Device = ({ index: deviceIndex, device }: Props) => {
         })
       );
       colorRef.current = color;
-      characteristicRef.current?.writeValueWithoutResponse(array.buffer);
+      if (characteristicRef.current) {
+        busy.current = true;
+        characteristicRef.current
+          .writeValueWithoutResponse(array.buffer)
+          .finally(() => {
+            busy.current = false;
+          });
+      }
     }
   };
 
@@ -51,7 +59,7 @@ const Device = ({ index: deviceIndex, device }: Props) => {
     intervalRef.current = setInterval(() => {
       const color = readColor();
       updateLight(color);
-    }, 1000 / 28);
+    }, 1000 / 24);
   };
 
   useEffect(() => {
