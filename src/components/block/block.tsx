@@ -1,14 +1,13 @@
 import styles from "./block.module.scss";
 import { ChangeEvent, useRef, useEffect } from "react";
-import { Block as BlockType, useSiteState } from "@/states/use-site-state";
+import { useSiteState } from "@/states/use-site-state";
 
 export type Props = {
   trackId: string;
-  index: number;
-  values: BlockType;
+  blockId: string;
 };
 
-const Block = ({ trackId, index, values }: Props) => {
+const Block = ({ trackId, blockId }: Props) => {
   const containerRef = useRef(null);
 
   const timeStart = useRef<number | null>(null);
@@ -16,8 +15,19 @@ const Block = ({ trackId, index, values }: Props) => {
   const alphaStart = useRef<number | null>(null);
   const alphaEnd = useRef<number | null>(null);
 
-  const { bars, beats, removeBlock, updateColor, updateTime, updateAlpha } =
-    useSiteState();
+  const {
+    blocks,
+    bars,
+    beats,
+    removeBlock,
+    updateColor,
+    updateTime,
+    updateAlpha,
+  } = useSiteState();
+
+  const values = blocks[blockId];
+
+  if (!values) return null;
 
   const checkBar = (
     x: number
@@ -56,32 +66,32 @@ const Block = ({ trackId, index, values }: Props) => {
     const r = parseInt(color.substr(1, 2), 16);
     const g = parseInt(color.substr(3, 2), 16);
     const b = parseInt(color.substr(5, 2), 16);
-    updateColor(trackId, index, [r, g, b]);
+    updateColor(blockId, [r, g, b]);
   };
 
   const onWindowMouseMove = (e: MouseEvent) => {
     if (timeStart.current !== null) {
       const { progress } = checkBar(e.pageX);
       if (progress >= 0 && progress < values.time[1])
-        updateTime(trackId, index, [progress, values.time[1]]);
+        updateTime(blockId, [progress, values.time[1]]);
     }
     if (timeEnd.current !== null) {
       const { width, barWidth, progress } = checkBar(e.pageX);
       const progressBuffer = progress + barWidth / width;
       if (progressBuffer <= 1 && progressBuffer > values.time[0])
-        updateTime(trackId, index, [values.time[0], progressBuffer]);
+        updateTime(blockId, [values.time[0], progressBuffer]);
     }
     if (alphaStart.current !== null) {
       let alpha = (alphaStart.current - e.pageY) / 70 + 0.5;
       if (alpha < 0) alpha = 0;
       if (alpha > 1) alpha = 1;
-      updateAlpha(trackId, index, [alpha, values.alpha[1]]);
+      updateAlpha(blockId, [alpha, values.alpha[1]]);
     }
     if (alphaEnd.current !== null) {
       let alpha = (alphaEnd.current - e.pageY) / 70 + 0.5;
       if (alpha < 0) alpha = 0;
       if (alpha > 1) alpha = 1;
-      updateAlpha(trackId, index, [values.alpha[0], alpha]);
+      updateAlpha(blockId, [values.alpha[0], alpha]);
     }
   };
 
@@ -146,9 +156,7 @@ const Block = ({ trackId, index, values }: Props) => {
         ></div>
         <button
           className={styles["remove"]}
-          onClick={() => {
-            removeBlock(trackId, index);
-          }}
+          onClick={() => removeBlock(trackId, blockId)}
         >
           -
         </button>

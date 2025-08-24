@@ -19,7 +19,7 @@ const Device = ({ index: deviceIndex, device }: Props) => {
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const colorRef = useRef("");
 
-  const { tracks, removeDevice } = useSiteState();
+  const { tracks, blocks, removeDevice } = useSiteState();
 
   const rgbToHex = (r: any, g: any, b: any) => {
     return ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
@@ -83,7 +83,8 @@ const Device = ({ index: deviceIndex, device }: Props) => {
       ({ progress }) => {
         const rgba = [0, 0, 0, 0];
         [...device.tracks].reverse().forEach((trackId) => {
-          tracks[trackId]?.forEach((block) => {
+          tracks[trackId]?.forEach((blockId) => {
+            const block = blocks[blockId];
             if (progress >= block.time[0] && progress < block.time[1]) {
               const alpha =
                 block.alpha[0] +
@@ -140,10 +141,9 @@ const Device = ({ index: deviceIndex, device }: Props) => {
         ></div>
       </div>
       <div className={styles["tracks"]}>
-        {device.tracks.map((trackId, index) => {
-          const blocks = tracks[trackId];
-          return <Track key={index} id={trackId} blocks={blocks} />;
-        })}
+        {device.tracks.map((trackId, index) => (
+          <Track key={index} trackId={trackId} blockIds={tracks[trackId]} />
+        ))}
       </div>
     </div>
   );

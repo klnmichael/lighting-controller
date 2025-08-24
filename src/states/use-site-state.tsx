@@ -14,12 +14,6 @@ export interface UpdateValues {
   beat: number;
 }
 
-export interface Block {
-  time: number[];
-  color: number[];
-  alpha: number[];
-}
-
 export interface Device {
   name: string;
   bluetoothDevice: BluetoothDevice;
@@ -27,8 +21,21 @@ export interface Device {
 }
 
 export interface Tracks {
-  [id: string]: Block[];
+  [id: string]: string[];
 }
+
+export interface Block {
+  time: number[];
+  color: number[];
+  alpha: number[];
+}
+
+export interface Blocks {
+  [id: string]: Block;
+}
+
+// TODO:
+// - bar mode
 
 interface SiteStateContextValue {
   setRaf: (
@@ -45,15 +52,16 @@ interface SiteStateContextValue {
   setBpm: (value: number) => void;
   devices: Device[];
   tracks: Tracks;
+  blocks: Blocks;
   addDevice: () => void;
   removeDevice: (index: number) => void;
   addTrack: (deviceIndex: number) => void;
   removeTrack: (deviceIndex: number, trackIndex: number) => void;
   addBlock: (trackId: string, block: Block) => void;
-  removeBlock: (trackId: string, blockIndex: number) => void;
-  updateTime: (trackId: string, blockIndex: number, time: number[]) => void;
-  updateColor: (trackId: string, blockIndex: number, color: number[]) => void;
-  updateAlpha: (trackId: string, blockIndex: number, alpha: number[]) => void;
+  removeBlock: (trackId: string, blockId: string) => void;
+  updateTime: (blockId: string, time: number[]) => void;
+  updateColor: (blockId: string, color: number[]) => void;
+  updateAlpha: (blockId: string, alpha: number[]) => void;
 }
 
 const initialState: SiteStateContextValue = {
@@ -68,6 +76,7 @@ const initialState: SiteStateContextValue = {
   setBpm: () => {},
   devices: [],
   tracks: {},
+  blocks: {},
   addDevice: () => {},
   removeDevice: () => {},
   addTrack: () => {},
@@ -105,6 +114,7 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [tracks, setTracks] = useState<Tracks>({});
+  const [blocks, setBlocks] = useState<Blocks>({});
 
   // const [devices, setDevices] = useState<Device[]>(
   //   JSON.parse(
@@ -182,6 +192,7 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
         optionalServices: [0xffe5],
       })
       .then((bluetoothDevice) => {
+        // const bluetoothDevice = {} as BluetoothDevice;
         if (!bluetoothDevice) return;
         const name = bluetoothDevice.name?.trim() || generateId();
         if (devices.find((d) => d.name === name)) return;
@@ -239,53 +250,56 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addBlock = (trackId: string, block: Block) => {
+    const id = Math.random().toString(36).slice(2);
+    setBlocks((blocks) => {
+      const updatedBlocks = { ...blocks };
+      updatedBlocks[id] = block;
+      return updatedBlocks;
+    });
     setTracks((tracks) => {
       const updatedTracks = { ...tracks };
       const updatedBlocks = tracks[trackId];
-      updatedTracks[trackId] = [...updatedBlocks, block];
+      updatedTracks[trackId] = [...updatedBlocks, id];
       return updatedTracks;
     });
+    return id;
   };
 
-  const removeBlock = (trackId: string, blockIndex: number) => {
+  const removeBlock = (trackId: string, blockId: string) => {
     setTracks((tracks) => {
       const updatedTracks = { ...tracks };
       const updatedBlocks = tracks[trackId];
       updatedTracks[trackId] = [...updatedBlocks];
-      updatedTracks[trackId].splice(blockIndex, 1);
+      const index = updatedBlocks.indexOf(blockId);
+      updatedTracks[trackId].splice(index, 1);
       return updatedTracks;
+    });
+    setBlocks((blocks) => {
+      return blocks;
     });
   };
 
-  const updateTime = (trackId: string, blockIndex: number, time: number[]) => {
-    setTracks((tracks) => {
-      const updatedTracks = { ...tracks };
-      updatedTracks[trackId][blockIndex].time = time;
-      return updatedTracks;
+  const updateTime = (blockId: string, time: number[]) => {
+    setBlocks((blocks) => {
+      const updatedBlocks = { ...blocks };
+      updatedBlocks[blockId].time = time;
+      return updatedBlocks;
     });
   };
 
-  const updateColor = (
-    trackId: string,
-    blockIndex: number,
-    color: number[]
-  ) => {
-    setTracks((tracks) => {
-      const updatedTracks = { ...tracks };
-      updatedTracks[trackId][blockIndex].color = color;
-      return updatedTracks;
+  const updateColor = (blockId: string, color: number[]) => {
+    setBlocks((blocks) => {
+      const updatedBlocks = { ...blocks };
+      updatedBlocks[blockId].color = color;
+      return updatedBlocks;
     });
   };
 
-  const updateAlpha = (
-    trackId: string,
-    blockIndex: number,
-    alpha: number[]
-  ) => {
-    setTracks((tracks) => {
-      const updatedTracks = { ...tracks };
-      updatedTracks[trackId][blockIndex].alpha = alpha;
-      return updatedTracks;
+  const updateAlpha = (blockId: string, alpha: number[]) => {
+    setBlocks((blocks) => {
+      const updatedBlocks = { ...blocks };
+      updatedBlocks[blockId].alpha = alpha;
+      return updatedBlocks;
     });
   };
 
@@ -331,6 +345,7 @@ const SiteStateProvider = ({ children }: { children: ReactNode }) => {
     setBpm,
     devices,
     tracks,
+    blocks,
     addDevice,
     removeDevice,
     addTrack,
