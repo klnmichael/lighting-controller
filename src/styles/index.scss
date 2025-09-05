@@ -1,0 +1,22 @@
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --gray-100: #1e2124;
+  --gray-200: #282b30;
+  --gray-300: #36393e;
+  --gray-400: #424549;
+}
+
+html,
+body {
+  background-color: var(--gray-100);
+  color: var(--white);
+}
+
+html {
+  font-size: 62.5%; // 1rem = 10px
+}
+
+body {
+  font-family: var(--font-geist-sans);
+}

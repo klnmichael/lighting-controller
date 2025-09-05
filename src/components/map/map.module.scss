@@ -1,0 +1,171 @@
+.container {
+  position: relative;
+}
+.bpm {
+  width: 5rem;
+  padding: 1rem;
+  background-color: var(--gray-200);
+  position: absolute;
+  left: calc(50% - 2.5rem);
+  top: 1rem;
+  z-index: 1;
+
+  input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+.layout {
+  width: 78svh;
+  position: relative;
+
+  &::before {
+    content: "";
+    padding-top: 128%;
+    display: block;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    fill: var(--white);
+    opacity: 0.25;
+  }
+}
+.plan {
+  position: absolute;
+  inset: 0;
+  opacity: 0.25;
+}
+.lights {
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  inset: 0;
+  list-style: none;
+
+  li {
+    position: absolute;
+
+    &:nth-child(1) {
+      left: 11.4%;
+      top: 8.9%;
+    }
+    &:nth-child(2) {
+      left: 31.6%;
+      top: 8.9%;
+    }
+    &:nth-child(3) {
+      left: 50.1%;
+      top: 8.9%;
+    }
+    &:nth-child(4) {
+      left: 67%;
+      top: 8.9%;
+    }
+    &:nth-child(5) {
+      left: 85.6%;
+      top: 8.9%;
+    }
+    &:nth-child(6) {
+      left: 67%;
+      top: 16.2%;
+    }
+    &:nth-child(7) {
+      left: 85.6%;
+      top: 16.2%;
+    }
+    &:nth-child(8) {
+      left: 11.4%;
+      top: 28.8%;
+    }
+    &:nth-child(9) {
+      left: 31.6%;
+      top: 28.8%;
+    }
+    &:nth-child(10) {
+      left: 50.1%;
+      top: 28.8%;
+    }
+    &:nth-child(11) {
+      left: 67%;
+      top: 28.8%;
+    }
+    &:nth-child(12) {
+      left: 85.6%;
+      top: 28.8%;
+    }
+    &:nth-child(13) {
+      left: 19.2%;
+      top: 49.4%;
+    }
+    &:nth-child(14) {
+      left: 39.4%;
+      top: 49.4%;
+    }
+    &:nth-child(15) {
+      left: 57.9%;
+      top: 49.4%;
+    }
+    &:nth-child(16) {
+      left: 19.2%;
+      top: 63.8%;
+    }
+    &:nth-child(17) {
+      left: 57.9%;
+      top: 63.8%;
+    }
+    &:nth-child(18) {
+      left: 19.2%;
+      top: 78%;
+    }
+    &:nth-child(19) {
+      left: 57.9%;
+      top: 78%;
+    }
+    &:nth-child(20) {
+      left: 19.2%;
+      top: 92.5%;
+    }
+    &:nth-child(21) {
+      left: 39.4%;
+      top: 92.5%;
+    }
+    &:nth-child(22) {
+      left: 57.9%;
+      top: 92.5%;
+    }
+
+    div {
+      width: 3.5svh;
+      min-width: 2rem;
+      aspect-ratio: 1/1;
+      background-color: black;
+      border-radius: 50%;
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      transition-property: background-color, opacity;
+      transition-timing-function: linear;
+      transition-duration: 0.15s;
+    }
+  }
+}
+.blocks {
+  width: 25vw;
+  height: 100svh;
+  padding: 1rem;
+  box-sizing: border-box;
+  position: absolute;
+  right: 0;
+  top: 0;
+  overflow: auto;
+
+  > * + * {
+    margin-top: 1rem;
+  }
+}

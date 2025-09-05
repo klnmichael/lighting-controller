@@ -1,0 +1,16 @@
+.container {
+  padding: 1rem;
+  background-color: var(--gray-200);
+  font-size: 1.2rem;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+
+  h2 {
+    margin: 0;
+  }
+}
+.settings {
+}
