@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import randomColor from "randomcolor";
 import { IPS } from "@/lib/constants";
 import Block from "../block";
@@ -21,44 +21,56 @@ export interface SparkleProps {
 }
 
 const Sparkle = ({ active, bpm, onRun, updateLight }: SparkleProps) => {
-  const activeLoop = useRef(active);
-  const bpmLoop = useRef(125);
-  const hashLoop = useRef("");
+  const activeRef = useRef(active);
+  const bpmRef = useRef(125);
+  const hashRef = useRef("");
 
-  const speed = useRef(2);
-  const accents = useRef(4);
-  const accentColor = useRef<[number, number, number]>([255, 255, 255]);
-  const colorPattern = useRef("individual-random-color");
-  const customColor = useRef<[number, number, number]>([255, 0, 255]);
+  const speedRef = useRef(2);
+  const accentsRef = useRef(4);
+  const accentColorRef = useRef<[number, number, number]>([255, 255, 255]);
+  const colorPatternRef = useRef("beat-random-color");
+  const customColorRef = useRef<[number, number, number]>([255, 0, 255]);
+
+  const [speed, setSpeed] = useState(speedRef.current);
+  const [accents, setAccents] = useState(accentsRef.current);
+  const [accentColor, setAccentColor] = useState<[number, number, number]>(
+    accentColorRef.current
+  );
+  const [colorPattern, setColorPattern] = useState(colorPatternRef.current);
+  const [customColor, setCustomColor] = useState<[number, number, number]>(
+    customColorRef.current
+  );
 
   useEffect(() => {
-    activeLoop.current = active;
-  }, [active]);
-
-  useEffect(() => {
-    bpmLoop.current = bpm;
-  }, [bpm]);
+    activeRef.current = active;
+    bpmRef.current = bpm;
+    speedRef.current = speed;
+    accentsRef.current = accents;
+    accentColorRef.current = accentColor;
+    colorPatternRef.current = colorPattern;
+    customColorRef.current = customColor;
+  }, [active, bpm, speed, accents, accentColor, colorPattern, customColor]);
 
   useEffect(() => {
     if (!active) return;
     const hash = (Math.random() + 1).toString(36).substring(7);
-    hashLoop.current = hash;
+    hashRef.current = hash;
     const sparkle = () => {
       const accentIndex: number[] = [];
-      if (accents.current) {
-        for (let i = 0; i < accents.current; ++i) {
+      if (accentsRef.current) {
+        for (let i = 0; i < accentsRef.current; ++i) {
           accentIndex.push(Math.floor(Math.random() * IPS.length));
         }
       }
-      let color = customColor.current;
-      if (colorPattern.current === "beat-random-color") {
+      let color = customColorRef.current;
+      if (colorPatternRef.current === "beat-random-color") {
         color = randomColor({
           luminosity: "bright",
           format: "rgbArray",
         }) as unknown as [number, number, number];
       }
       IPS.forEach((_, index) => {
-        if (colorPattern.current === "individual-random-color") {
+        if (colorPatternRef.current === "individual-random-color") {
           color = randomColor({
             luminosity: "bright",
             format: "rgbArray",
@@ -66,27 +78,27 @@ const Sparkle = ({ active, bpm, onRun, updateLight }: SparkleProps) => {
         }
         updateLight({
           index,
-          color: accentIndex.includes(index) ? accentColor.current : color,
+          color: accentIndex.includes(index) ? accentColorRef.current : color,
           dimming: accentIndex.includes(index)
             ? 100
-            : Math.round(Math.random() * 50) + 50,
+            : Math.round(Math.random() * 25) + 75,
         });
         setTimeout(() => {
-          if (!activeLoop.current || hash !== hashLoop.current) return;
+          if (!activeRef.current || hash !== hashRef.current) return;
           if (!accentIndex.includes(index)) {
             updateLight({
               index,
               dimming: accentIndex.includes(index)
                 ? 100
-                : Math.round(Math.random() * 100),
+                : Math.round(Math.random() * 75) + 25,
             });
           }
-        }, (1000 * 60) / bpmLoop.current / speed.current);
+        }, (1000 * 60) / bpmRef.current / speedRef.current);
       });
       setTimeout(() => {
-        if (!activeLoop.current || hash !== hashLoop.current) return;
+        if (!activeRef.current || hash !== hashRef.current) return;
         sparkle();
-      }, (((1000 * 60) / bpmLoop.current) * 2) / speed.current);
+      }, (((1000 * 60) / bpmRef.current) * 2) / speedRef.current);
     };
     sparkle();
   }, [active, updateLight]);
@@ -110,24 +122,20 @@ const Sparkle = ({ active, bpm, onRun, updateLight }: SparkleProps) => {
       <div>
         <input
           type="number"
-          defaultValue={2}
-          min={1}
+          value={speed}
+          min={0}
           style={{ width: "3.5rem" }}
-          onChange={(e) => {
-            speed.current = parseFloat(e.target.value);
-          }}
+          onChange={(e) => setSpeed(parseFloat(e.target.value))}
         />{" "}
         x speed
       </div>
       <div>
         <input
           type="number"
-          defaultValue={4}
+          value={accents}
           min={0}
           style={{ width: "3.5rem" }}
-          onChange={(e) => {
-            accents.current = parseFloat(e.target.value);
-          }}
+          onChange={(e) => setAccents(parseFloat(e.target.value))}
         />{" "}
         accents
       </div>
@@ -140,21 +148,19 @@ const Sparkle = ({ active, bpm, onRun, updateLight }: SparkleProps) => {
               e.target.value
             );
             if (result) {
-              accentColor.current = [
+              setAccentColor([
                 parseInt(result[1], 16),
                 parseInt(result[2], 16),
                 parseInt(result[3], 16),
-              ];
+              ]);
             }
           }}
         />
       </div>
       <div>
         <select
-          defaultValue="individual-random-color"
-          onChange={(e) => {
-            colorPattern.current = e.target.value;
-          }}
+          value={colorPattern}
+          onChange={(e) => setColorPattern(e.target.value)}
         >
           <option value="individual-random-color">
             individual-random-color
@@ -172,11 +178,11 @@ const Sparkle = ({ active, bpm, onRun, updateLight }: SparkleProps) => {
               e.target.value
             );
             if (result) {
-              customColor.current = [
+              setCustomColor([
                 parseInt(result[1], 16),
                 parseInt(result[2], 16),
                 parseInt(result[3], 16),
-              ];
+              ]);
             }
           }}
         />

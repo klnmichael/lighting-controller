@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
+// import { analyze } from "web-audio-beat-detector";
 import { IPS } from "@/lib/constants";
 import Wave from "../blocks/wave";
 import Flash from "../blocks/flash";
@@ -12,8 +13,6 @@ const Map = () => {
   const lightRefs = useRef<(HTMLElement | null)[]>([]);
 
   const [activeBlock, setActiveBlock] = useState("");
-  const activeBlockRef = useRef("");
-
   const [bpm, setBpm] = useState(125);
 
   const updateLight = async ({
@@ -34,15 +33,11 @@ const Map = () => {
         lightRef.style.opacity = `${Math.max(dimming / 100, 0.2)}`;
       }
     }
-    // fetch("/api/wiz", {
-    //   method: "POST",
-    //   body: JSON.stringify({ ip: IPS[index], color, dimming }),
-    // });
+    fetch("/api/wiz", {
+      method: "POST",
+      body: JSON.stringify({ ip: IPS[index], color, dimming }),
+    });
   };
-
-  useEffect(() => {
-    activeBlockRef.current = activeBlock;
-  }, [activeBlock]);
 
   useEffect(() => {
     const onDocumentKeydown = (e: KeyboardEvent) => {
@@ -68,6 +63,17 @@ const Map = () => {
             setBpm(parseFloat(e.target.value));
           }}
         />
+        <button
+          onClick={async () => {
+            console.log("analyze");
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            console.log(stream);
+          }}
+        >
+          analyze
+        </button>
       </div>
       <div className={styles.layout}>
         <svg

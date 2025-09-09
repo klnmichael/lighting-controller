@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "dgram": "^1.0.1",
+    "extendable-media-recorder": "^9.2.29",
     "next": "15.5.2",
     "normalize.css": "^8.0.1",
     "randomcolor": "^0.6.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "sass": "^1.91.0"
+    "sass": "^1.91.0",
+    "web-audio-beat-detector": "^8.2.30"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

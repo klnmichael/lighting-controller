@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import randomColor from "randomcolor";
 import { ROWS } from "@/lib/constants";
 import Block from "../block";
@@ -21,30 +21,36 @@ export interface WaveProps {
 }
 
 const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
-  const activeLoop = useRef(active);
-  const bpmLoop = useRef(125);
-  const hashLoop = useRef("");
+  const activeRef = useRef(active);
+  const bpmRef = useRef(125);
+  const hashRef = useRef("");
 
-  const direction = useRef("alternate");
-  const colorPattern = useRef("individual-random-color");
-  const customColor = useRef<[number, number, number]>([255, 0, 255]);
+  const directionRef = useRef("alternate");
+  const colorPatternRef = useRef("individual-random-color");
+  const customColorRef = useRef<[number, number, number]>([255, 0, 255]);
+
+  const [direction, setDirection] = useState(directionRef.current);
+  const [colorPattern, setColorPattern] = useState(colorPatternRef.current);
+  const [customColor, setCustomColor] = useState<[number, number, number]>(
+    customColorRef.current
+  );
 
   useEffect(() => {
-    activeLoop.current = active;
-  }, [active]);
-
-  useEffect(() => {
-    bpmLoop.current = bpm;
-  }, [bpm]);
+    activeRef.current = active;
+    bpmRef.current = bpm;
+    directionRef.current = direction;
+    colorPatternRef.current = colorPattern;
+    customColorRef.current = customColor;
+  }, [active, bpm, direction, colorPattern, customColor]);
 
   useEffect(() => {
     if (!active) return;
     const hash = (Math.random() + 1).toString(36).substring(7);
-    hashLoop.current = hash;
+    hashRef.current = hash;
     const wave = (iteration: number) => {
       let delay = 0;
       const rows: () => number[][] = () => {
-        switch (direction.current) {
+        switch (directionRef.current) {
           case "door-window":
             return [...ROWS].reverse();
           case "alternate":
@@ -54,31 +60,31 @@ const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
             return [...ROWS];
         }
       };
-      let color = customColor.current;
-      if (colorPattern.current === "beat-random-color") {
+      let color = customColorRef.current;
+      if (colorPatternRef.current === "beat-random-color") {
         color = randomColor({
           luminosity: "bright",
           format: "rgbArray",
         }) as unknown as [number, number, number];
         setTimeout(() => {
-          if (!activeLoop.current || hash !== hashLoop.current) return;
+          if (!activeRef.current || hash !== hashRef.current) return;
           color = randomColor({
             luminosity: "bright",
             format: "rgbArray",
           }) as unknown as [number, number, number];
-        }, (1000 * 60) / bpmLoop.current);
+        }, (1000 * 60) / bpmRef.current);
       }
       rows().forEach((row) => {
         setTimeout(() => {
-          if (!activeLoop.current || hash !== hashLoop.current) return;
-          if (colorPattern.current === "row-random-color") {
+          if (!activeRef.current || hash !== hashRef.current) return;
+          if (colorPatternRef.current === "row-random-color") {
             color = randomColor({
               luminosity: "bright",
               format: "rgbArray",
             }) as unknown as [number, number, number];
           }
           row.forEach((index) => {
-            if (colorPattern.current === "individual-random-color") {
+            if (colorPatternRef.current === "individual-random-color") {
               const individualColor = randomColor({
                 luminosity: "bright",
                 format: "rgbArray",
@@ -89,7 +95,7 @@ const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
                 dimming: 100,
               });
               setTimeout(() => {
-                if (!activeLoop.current || hash !== hashLoop.current) return;
+                if (!activeRef.current || hash !== hashRef.current) return;
                 updateLight({
                   index,
                   color: individualColor,
@@ -103,22 +109,22 @@ const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
                 dimming: 100,
               });
               setTimeout(() => {
-                if (!activeLoop.current || hash !== hashLoop.current) return;
+                if (!activeRef.current || hash !== hashRef.current) return;
                 updateLight({
                   index,
                   color,
                   dimming: 0,
                 });
-              }, (1000 * 60) / bpmLoop.current / ((ROWS.length - 1) / 4));
+              }, (1000 * 60) / bpmRef.current / ((ROWS.length - 1) / 4));
             }
           });
         }, delay);
-        delay += (1000 * 60) / bpmLoop.current / (ROWS.length - 1);
+        delay += (1000 * 60) / bpmRef.current / (ROWS.length - 1);
       });
       setTimeout(() => {
-        if (!activeLoop.current || hash !== hashLoop.current) return;
+        if (!activeRef.current || hash !== hashRef.current) return;
         wave(iteration + 1);
-      }, ((1000 * 60) / bpmLoop.current) * 2);
+      }, ((1000 * 60) / bpmRef.current) * 2);
     };
     wave(Math.round(Math.random()));
   }, [active, updateLight]);
@@ -128,15 +134,15 @@ const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
       switch (e.code) {
         case "Digit1":
           onRun(true);
-          colorPattern.current = "individual-random-color";
+          setColorPattern("individual-random-color");
           break;
         case "Digit2":
           onRun(true);
-          colorPattern.current = "custom-color";
+          setColorPattern("beat-random-color");
           break;
         case "Digit3":
           onRun(true);
-          colorPattern.current = "beat-random-color";
+          setColorPattern("custom-color");
           break;
       }
     };
@@ -150,10 +156,8 @@ const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
     <Block title="Wave" active={active} onRun={onRun}>
       <div>
         <select
-          defaultValue="alternate"
-          onChange={(e) => {
-            direction.current = e.target.value;
-          }}
+          value={direction}
+          onChange={(e) => setDirection(e.target.value)}
         >
           <option value="alternate">alternate</option>
           <option value="window-door">window-door</option>
@@ -162,10 +166,8 @@ const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
       </div>
       <div>
         <select
-          defaultValue="individual-random-color"
-          onChange={(e) => {
-            colorPattern.current = e.target.value;
-          }}
+          value={colorPattern}
+          onChange={(e) => setColorPattern(e.target.value)}
         >
           <option value="individual-random-color">
             individual-random-color
@@ -184,11 +186,11 @@ const Wave = ({ active, bpm, onRun, updateLight }: WaveProps) => {
               e.target.value
             );
             if (result) {
-              customColor.current = [
+              setCustomColor([
                 parseInt(result[1], 16),
                 parseInt(result[2], 16),
                 parseInt(result[3], 16),
-              ];
+              ]);
             }
           }}
         />

@@ -6,35 +6,46 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const params: {
-      state: boolean;
-      w: number;
-      temp: number;
-      speed: number;
-      fade: number;
-      "fade-in": number;
-      "fade-out": number;
+      state?: boolean;
+      w?: number;
+      temp?: number;
+      speed?: number;
+      fade?: number;
+      "fade-in"?: number;
+      "fade-out"?: number;
       dimming?: number;
       r?: number;
       g?: number;
       b?: number;
     } = {
       state: body.state || true,
-      w: 255,
-      temp: 2700,
+      // w: body.color?.reduce() === 255 * 3 ? 255 : 0,
+      // temp: 2700,
       speed: 20,
-      fade: 1,
-      "fade-in": 1,
-      "fade-out": 1,
+      fade: 20,
+      "fade-in": 20,
+      "fade-out": 20,
     };
 
     if (body.dimming || body.dimming === 0) {
-      params.dimming = body.dimming;
+      params.dimming = body.dimming < 10 ? 10 : body.dimming;
     }
 
     if (body.color) {
       params.r = body.color[0];
-      params.g = body.color[0];
-      params.b = body.color[0];
+      params.g = body.color[1];
+      params.b = body.color[2];
+      if (
+        body.color.reduce(
+          (accumulator: number, currentValue: number) =>
+            accumulator + currentValue,
+          0
+        ) ===
+        255 * 3
+      ) {
+        params.temp = 5000;
+        params.dimming = 50;
+      }
     }
 
     const message = {
@@ -50,14 +61,14 @@ export async function POST(request: NextRequest) {
 
     await client.send(buffer, 0, buffer.length, 38899, IP, (e) => {
       if (e) {
-        console.error(e);
+        // console.error(e);
       } else {
-        console.log(IP, message);
+        // console.log(IP, message);
       }
       client.close();
     });
 
-    return Response.json({});
+    return new Response("", { status: 200 });
   } catch (e) {
     console.log(e);
     return new Response("", { status: 500 });
