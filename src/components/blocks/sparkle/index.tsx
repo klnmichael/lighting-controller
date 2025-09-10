@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import randomColor from "randomcolor";
+import { Color } from "@/types/wiz";
 import { IPS } from "@/lib/constants";
 import Block from "../block";
 
@@ -15,7 +16,7 @@ export interface SparkleProps {
     dimming,
   }: {
     index: number;
-    color?: [number, number, number];
+    color?: Color;
     dimming?: number;
   }) => void;
 }
@@ -27,19 +28,15 @@ const Sparkle = ({ active, bpm, onRun, updateLight }: SparkleProps) => {
 
   const speedRef = useRef(2);
   const accentsRef = useRef(4);
-  const accentColorRef = useRef<[number, number, number]>([255, 255, 255]);
+  const accentColorRef = useRef<Color>([255, 255, 255]);
   const colorPatternRef = useRef("beat-random-color");
-  const customColorRef = useRef<[number, number, number]>([255, 0, 255]);
+  const customColorRef = useRef<Color>([255, 0, 255]);
 
   const [speed, setSpeed] = useState(speedRef.current);
   const [accents, setAccents] = useState(accentsRef.current);
-  const [accentColor, setAccentColor] = useState<[number, number, number]>(
-    accentColorRef.current
-  );
+  const [accentColor, setAccentColor] = useState<Color>(accentColorRef.current);
   const [colorPattern, setColorPattern] = useState(colorPatternRef.current);
-  const [customColor, setCustomColor] = useState<[number, number, number]>(
-    customColorRef.current
-  );
+  const [customColor, setCustomColor] = useState<Color>(customColorRef.current);
 
   useEffect(() => {
     activeRef.current = active;
@@ -67,14 +64,14 @@ const Sparkle = ({ active, bpm, onRun, updateLight }: SparkleProps) => {
         color = randomColor({
           luminosity: "bright",
           format: "rgbArray",
-        }) as unknown as [number, number, number];
+        }) as unknown as Color;
       }
       IPS.forEach((_, index) => {
         if (colorPatternRef.current === "individual-random-color") {
           color = randomColor({
             luminosity: "bright",
             format: "rgbArray",
-          }) as unknown as [number, number, number];
+          }) as unknown as Color;
         }
         updateLight({
           index,

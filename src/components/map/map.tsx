@@ -2,79 +2,66 @@
 
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
-// import { analyze } from "web-audio-beat-detector";
+import type { Color } from "@/types/wiz.ts";
 import { IPS } from "@/lib/constants";
-import Wave from "../blocks/wave";
-import Flash from "../blocks/flash";
-import Sparkle from "../blocks/sparkle";
+// import Wave from "../blocks/wave";
+// import Flash from "../blocks/flash";
+// import Sparkle from "../blocks/sparkle";
 import styles from "./map.module.scss";
 
-const Map = () => {
+export interface MapProps {
+  bpm?: number;
+  activeSequence?: any;
+}
+
+const Map = ({ bpm, activeSequence }: MapProps) => {
   const lightRefs = useRef<(HTMLElement | null)[]>([]);
 
-  const [activeBlock, setActiveBlock] = useState("");
-  const [bpm, setBpm] = useState(125);
+  // const [activeBlock, setActiveBlock] = useState("");
 
-  const updateLight = async ({
-    index,
-    color,
-    dimming,
-  }: {
-    index: number;
-    color?: [number, number, number];
-    dimming?: number;
-  }) => {
-    const lightRef = lightRefs.current[index];
-    if (lightRef) {
-      if (color) {
-        lightRef.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-      }
-      if (dimming || dimming === 0) {
-        lightRef.style.opacity = `${Math.max(dimming / 100, 0.2)}`;
-      }
-    }
-    fetch("/api/wiz", {
-      method: "POST",
-      body: JSON.stringify({ ip: IPS[index], color, dimming }),
-    });
-  };
+  // const updateLight = async ({
+  //   index,
+  //   color,
+  //   dimming,
+  // }: {
+  //   index: number;
+  //   color?: Color;
+  //   dimming?: number;
+  // }) => {
+  //   const lightRef = lightRefs.current[index];
+  //   if (lightRef) {
+  //     if (color) {
+  //       lightRef.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+  //     }
+  //     if (dimming || dimming === 0) {
+  //       lightRef.style.opacity = `${Math.max(dimming / 100, 0.2)}`;
+  //     }
+  //   }
+  //   fetch("http://192.168.50.150:3000", {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     body: JSON.stringify({ ip: IPS[index], color, dimming }),
+  //   });
+  // };
 
-  useEffect(() => {
-    const onDocumentKeydown = (e: KeyboardEvent) => {
-      switch (e.code) {
-        case "Escape":
-          setActiveBlock("");
-          break;
-      }
-    };
-    document.addEventListener("keydown", onDocumentKeydown);
-    return () => {
-      document.removeEventListener("keydown", onDocumentKeydown);
-    };
-  }, []);
+  // useEffect(() => {
+  //   const onDocumentKeydown = (e: KeyboardEvent) => {
+  //     switch (e.code) {
+  //       case "Escape":
+  //         setActiveBlock("");
+  //         break;
+  //     }
+  //   };
+  //   document.addEventListener("keydown", onDocumentKeydown);
+  //   return () => {
+  //     document.removeEventListener("keydown", onDocumentKeydown);
+  //   };
+  // }, []);
 
   return (
     <section className={styles.container}>
-      <div className={styles.bpm}>
-        <input
-          type="number"
-          defaultValue={125}
-          onChange={(e) => {
-            setBpm(parseFloat(e.target.value));
-          }}
-        />
-        <button
-          onClick={async () => {
-            console.log("analyze");
-            const stream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
-            });
-            console.log(stream);
-          }}
-        >
-          analyze
-        </button>
-      </div>
       <div className={styles.layout}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -87,7 +74,7 @@ const Map = () => {
           <Image src="/map-plan.png" alt="" fill sizes="1" />
         </div>
         <ol className={styles.lights}>
-          {[...Array(22)].map((_, index) => (
+          {IPS.map((_, index) => (
             <li key={index}>
               <div></div>
               <div
@@ -100,7 +87,7 @@ const Map = () => {
           ))}
         </ol>
       </div>
-      <div className={styles.blocks}>
+      {/* <div className={styles.blocks}>
         <Wave
           active={activeBlock === "wave"}
           bpm={bpm}
@@ -119,7 +106,7 @@ const Map = () => {
           updateLight={updateLight}
           onRun={(state) => setActiveBlock(state ? "sparkle" : "")}
         />
-      </div>
+      </div> */}
     </section>
   );
 };

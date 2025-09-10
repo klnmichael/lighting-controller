@@ -2,25 +2,31 @@
   "name": "lighting-controller",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "hub": "nodemon --exec ts-node ./hub/server.ts"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dgram": "^1.0.1",
+    "express": "^5.1.0",
     "extendable-media-recorder": "^9.2.29",
     "next": "15.5.2",
     "normalize.css": "^8.0.1",
     "randomcolor": "^0.6.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "sass": "^1.91.0",
+    "sass": "^1.92.1",
     "web-audio-beat-detector": "^8.2.30"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
     "@types/node": "^24",
     "@types/randomcolor": "^0.5.9",
     "@types/react": "^19",

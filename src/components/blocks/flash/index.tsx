@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import randomColor from "randomcolor";
+import { Color } from "@/types/wiz";
 import { IPS } from "@/lib/constants";
 import Block from "../block";
 
@@ -15,7 +16,7 @@ export interface FlashProps {
     dimming,
   }: {
     index: number;
-    color?: [number, number, number];
+    color?: Color;
     dimming?: number;
   }) => void;
 }
@@ -27,13 +28,11 @@ const Flash = ({ active, bpm, onRun, updateLight }: FlashProps) => {
 
   const speedRef = useRef(2);
   const colorPatternRef = useRef("individual-random-color");
-  const customColorRef = useRef<[number, number, number]>([255, 255, 255]);
+  const customColorRef = useRef<Color>([255, 255, 255]);
 
   const [speed, setSpeed] = useState(speedRef.current);
   const [colorPattern, setColorPattern] = useState(colorPatternRef.current);
-  const [customColor, setCustomColor] = useState<[number, number, number]>(
-    customColorRef.current
-  );
+  const [customColor, setCustomColor] = useState<Color>(customColorRef.current);
 
   useEffect(() => {
     activeRef.current = active;
@@ -53,14 +52,14 @@ const Flash = ({ active, bpm, onRun, updateLight }: FlashProps) => {
         color = randomColor({
           luminosity: "bright",
           format: "rgbArray",
-        }) as unknown as [number, number, number];
+        }) as unknown as Color;
       }
       IPS.forEach((_, index) => {
         if (colorPatternRef.current === "individual-random-color") {
           color = randomColor({
             luminosity: "bright",
             format: "rgbArray",
-          }) as unknown as [number, number, number];
+          }) as unknown as Color;
         }
         updateLight({
           index,
