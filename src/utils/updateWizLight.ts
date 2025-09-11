@@ -1,5 +1,5 @@
 import dgram from "dgram";
-import type { WizLight } from "../types/wiz.ts";
+import type { WizLight } from "../types/global.ts";
 import { IPS } from "../lib/constants.ts";
 
 export const updateWizLight = async (index: number, config: WizLight) => {

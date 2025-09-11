@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
-import type { Color } from "@/types/wiz.ts";
+import type { Color } from "@/types/global";
 import { IPS } from "@/lib/constants";
 // import Wave from "../blocks/wave";
 // import Flash from "../blocks/flash";

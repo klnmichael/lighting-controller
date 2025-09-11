@@ -4,14 +4,24 @@ import sequences from "../src/lib/sequences/index.ts";
 
 const app = express();
 
-let bpm = 125;
-let sequence = "";
-let timeouts: ReturnType<typeof setTimeout>[] = [];
-let loopTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+let bpm = 125;
+let sequence = "";
+
+let timeouts: ReturnType<typeof setTimeout>[] = [];
+let loopTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
+
+const purgeSequenceTimeouts = () => {
+  timeouts.forEach((timeout) => clearTimeout(timeout));
+  timeouts = [];
+  if (loopTimeout) {
+    clearTimeout(loopTimeout);
+    loopTimeout = undefined;
+  }
+};
 
 app.post("/bpm", async (req, res) => {
   bpm = req.body.bpm;
@@ -19,12 +29,7 @@ app.post("/bpm", async (req, res) => {
 });
 
 app.post("/sequence/start", async (req, res) => {
-  timeouts.forEach((timeout) => clearTimeout(timeout));
-  timeouts = [];
-  if (loopTimeout) {
-    clearTimeout(loopTimeout);
-    loopTimeout = undefined;
-  }
+  purgeSequenceTimeouts();
   sequence = req.body.name;
   const loop = () => {
     timeouts = sequences[sequence].loop(bpm);
@@ -37,12 +42,7 @@ app.post("/sequence/start", async (req, res) => {
 });
 
 app.post("/sequence/pause", async (req, res) => {
-  timeouts.forEach((timeout) => clearTimeout(timeout));
-  timeouts = [];
-  if (loopTimeout) {
-    clearTimeout(loopTimeout);
-    loopTimeout = undefined;
-  }
+  purgeSequenceTimeouts();
   sequence = "";
   res.status(200).json({});
 });

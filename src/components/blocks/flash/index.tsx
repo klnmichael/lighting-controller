@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import randomColor from "randomcolor";
-import { Color } from "@/types/wiz";
+import { Color } from "@/types/global";
 import { IPS } from "@/lib/constants";
 import Block from "../block";
 

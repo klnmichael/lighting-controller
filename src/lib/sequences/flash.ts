@@ -1,7 +1,7 @@
 import randomColor from "randomcolor";
 import { IPS } from "../constants.ts";
 import { updateWizLight } from "../../utils/updateWizLight.ts";
-import type { Color } from "../../types/wiz.ts";
+import type { Color } from "../../types/global.ts";
 
 export const flashWhite = {
   label: "Flash White",
@@ -58,7 +58,6 @@ export const flashCustomColor = {
   beat: 1,
   loop: (bpm: number) => {
     IPS.forEach((_, index) => {
-      // TODO color update
       updateWizLight(index, {
         color: customColor,
         dimming: 100,
