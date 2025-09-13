@@ -4,7 +4,7 @@ import type { Color } from "../../types/global.ts";
 
 export const rippleOutwardWhite = {
   label: "Ripple Outward White",
-  beat: 1,
+  beats: 1,
   loop: (updateLight: any, bpm: number) => {
     const timeouts: any[] = [];
     const center = Math.floor(ROWS.length / 2);
@@ -37,7 +37,7 @@ export const rippleOutwardWhite = {
 
 export const rippleOutwardRandomColor = {
   label: "Ripple Outward Random Color",
-  beat: 1,
+  beats: 1,
   loop: (updateLight: any, bpm: number) => {
     const timeouts: any[] = [];
     const center = Math.floor(ROWS.length / 2);
@@ -76,7 +76,7 @@ let customColor: Color = [255, 0, 255];
 
 export const rippleOutwardCustomColor = {
   label: "Ripple Outward Custom Color",
-  beat: 1,
+  beats: 1,
   loop: (updateLight: any, bpm: number) => {
     const timeouts: any[] = [];
     const center = Math.floor(ROWS.length / 2);
