@@ -14,6 +14,6 @@ export const ROWS: number[][] = [
 ];
 
 export const ZONES = {
-  talk: IPS.filter(i => i <= 12),
-  dance: IPS.filter(i => i >= 13),
+  talk: ROWS.slice(0, 3).flat().map(i => IPS[i]),
+  dance: ROWS.slice(3).flat().map(i => IPS[i]),
 };
