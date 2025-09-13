@@ -43,7 +43,7 @@ export const updateWizLight = async (index: number, config: WizLight) => {
 
   const ip = `192.168.1.${IPS[index]}`;
 
-  console.log(ip, params);
+  // console.log(ip, params);
 
   // const client = dgram.createSocket("udp4");
   // const buffer = Buffer.from(JSON.stringify(message));

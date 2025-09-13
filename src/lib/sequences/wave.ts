@@ -4,10 +4,10 @@ import type { Color } from "../../types/global.ts";
 
 export const alternatingWaveRandomColor = {
   label: "Alternating Wave Random Color",
-  beats: 1,
-  loop: (updateLight: any, bpm: number) => {
+  beats: 4,
+  loop: (updateLight: any, bpm: number, currentBeat: number) => {
     let delay = 0;
-    const rowDelay = (1000 * 60) / bpm / (ROWS.length - 1);
+    const rowDelay = (1000 * 60) / bpm / ROWS.length - 1;
     const timeouts: any[] = [];
     ROWS.forEach((row) => {
       const color = randomColor({
