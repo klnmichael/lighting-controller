@@ -12,6 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 let bpm = 125;
 let sequence = "";
+let queuedSequence = "";
 let currentBeat = 0;
 
 let timeouts: ReturnType<typeof setTimeout>[] = [];
@@ -22,13 +23,18 @@ const purgeSequenceTimeouts = () => {
   timeouts = [];
 };
 
-const startLoop = () => {
-  timeouts = sequences[sequence].loop(updateWizLight, bpm);
+const loop = () => {
+  if (queuedSequence && queuedSequence !== sequence) {
+    sequence = queuedSequence;
+    queuedSequence = "";
+    currentBeat = 0;
+    timeouts = sequences[sequence].loop(updateWizLight, bpm, currentBeat);
+  } else if (!(currentBeat % sequences[sequence].beats)) {
+    timeouts = sequences[sequence].loop(updateWizLight, bpm, currentBeat);
+  }
   loopTimeout = setTimeout(() => {
-    if (++currentBeat >= sequences[sequence].beat) {
-      currentBeat = 0;
-      startLoop();
-    }
+    loop();
+    ++currentBeat;
   }, (1000 * 60) / bpm);
 };
 
@@ -40,9 +46,9 @@ const stopLoop = () => {
 };
 
 app.post("/cue", async (req, res) => {
-  stopLoop();
   purgeSequenceTimeouts();
-  startLoop();
+  stopLoop();
+  if (sequence) loop();
   res.status(200).json({});
 });
 
@@ -55,14 +61,16 @@ app.post("/pause", async (req, res) => {
 
 app.post("/bpm", async (req, res) => {
   bpm = req.body.value;
-  console.log(bpm);
   res.status(200).json({});
 });
 
 app.post("/sequence/start", async (req, res) => {
-  purgeSequenceTimeouts();
-  sequence = req.body.name;
-  if (!loopTimeout) startLoop();
+  if (sequence) {
+    queuedSequence = req.body.name;
+  } else {
+    sequence = req.body.name;
+  }
+  if (!loopTimeout) loop();
   res.status(200).json({});
 });
 

@@ -4,7 +4,7 @@ import { IPS } from "../constants.ts";
 
 export const flashWhite = {
   label: "Flash White",
-  beat: 1,
+  beats: 1,
   loop: (updateLight: any, bpm: number) => {
     IPS.forEach((_, index) => {
       updateLight(index, {
@@ -28,7 +28,7 @@ export const flashWhite = {
 
 export const flashRandomColor = {
   label: "Flash Random Color",
-  beat: 1,
+  beats: 1,
   loop: (updateLight: any, bpm: number) => {
     IPS.forEach((_, index) => {
       const color = randomColor({
@@ -56,7 +56,7 @@ let customColor: Color = [255, 0, 255];
 
 export const flashCustomColor = {
   label: "Flash Custom Color",
-  beat: 1,
+  beats: 1,
   loop: (updateLight: any, bpm: number) => {
     IPS.forEach((_, index) => {
       updateLight(index, {
@@ -69,7 +69,6 @@ export const flashCustomColor = {
         () =>
           IPS.forEach((_, index) => {
             updateLight(index, {
-              color: customColor,
               dimming: 0,
             });
           }),

@@ -7,12 +7,11 @@ import Controls from "@/components/controls";
 export default function Home() {
   const [bpm, setBpm] = useState(125);
   const [sequence, setSequence] = useState("");
-  const [controller, setController] = useState(false);
+  const [controller, setController] = useState(true);
 
   const hubUrl = process.env.NEXT_PUBLIC_HUB_URL;
 
   const cue = () => {
-    setSequence("");
     fetch(`${hubUrl}/cue`, {
       method: "POST",
       headers: {

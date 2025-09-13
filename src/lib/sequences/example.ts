@@ -6,7 +6,7 @@ let customColor: Color = [255, 0, 255];
 
 export const titleCamelCase = {
   label: "Title Space Separated",
-  beat: 1,
+  beats: 1,
   loop: (updateLight: any, bpm: number) => {
     const timeouts: any[] = [];
     IPS.forEach((index) => {
