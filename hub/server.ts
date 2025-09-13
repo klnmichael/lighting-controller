@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
-import sequences from "../src/lib/sequences/index.ts";
+import ip from "ip";
+import { sequences } from "../src/lib/sequences/index.ts";
+import { updateWizLight } from "../src/utils/updateWizLight.ts";
 
 const app = express();
 
@@ -10,6 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 let bpm = 125;
 let sequence = "";
+let currentBeat = 0;
 
 let timeouts: ReturnType<typeof setTimeout>[] = [];
 let loopTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
@@ -17,33 +20,49 @@ let loopTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
 const purgeSequenceTimeouts = () => {
   timeouts.forEach((timeout) => clearTimeout(timeout));
   timeouts = [];
+};
+
+const startLoop = () => {
+  timeouts = sequences[sequence].loop(updateWizLight, bpm);
+  loopTimeout = setTimeout(() => {
+    if (++currentBeat >= sequences[sequence].beat) {
+      currentBeat = 0;
+      startLoop();
+    }
+  }, (1000 * 60) / bpm);
+};
+
+const stopLoop = () => {
   if (loopTimeout) {
     clearTimeout(loopTimeout);
     loopTimeout = undefined;
   }
 };
 
+app.post("/cue", async (req, res) => {
+  stopLoop();
+  purgeSequenceTimeouts();
+  startLoop();
+  res.status(200).json({});
+});
+
+app.post("/pause", async (req, res) => {
+  purgeSequenceTimeouts();
+  stopLoop();
+  sequence = "";
+  res.status(200).json({});
+});
+
 app.post("/bpm", async (req, res) => {
-  bpm = req.body.bpm;
+  bpm = req.body.value;
+  console.log(bpm);
   res.status(200).json({});
 });
 
 app.post("/sequence/start", async (req, res) => {
   purgeSequenceTimeouts();
   sequence = req.body.name;
-  const loop = () => {
-    timeouts = sequences[sequence].loop(bpm);
-    loopTimeout = setTimeout(() => {
-      loop();
-    }, ((1000 * 60) / bpm) * sequences[sequence].beat);
-  };
-  loop();
-  res.status(200).json({});
-});
-
-app.post("/sequence/pause", async (req, res) => {
-  purgeSequenceTimeouts();
-  sequence = "";
+  if (!loopTimeout) startLoop();
   res.status(200).json({});
 });
 
@@ -53,7 +72,7 @@ app.post("/sequence/update", async (req, res) => {
   res.status(200).json({});
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.HUB_PORT;
 app.listen(PORT, () => {
-  console.log(`Hub running on port ${PORT}`);
+  console.log(`Hub running on http://${ip.address()}:${PORT}`);
 });

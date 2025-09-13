@@ -1,23 +1,45 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, act } from "react";
 import type { Color } from "@/types/global";
 import { IPS } from "@/lib/constants";
 // import Wave from "../blocks/wave";
 // import Flash from "../blocks/flash";
 // import Sparkle from "../blocks/sparkle";
 import styles from "./map.module.scss";
+import { sequences } from "@/lib/sequences";
 
 export interface MapProps {
   bpm?: number;
   activeSequence?: any;
+  onControllerClick?: () => void;
 }
 
-const Map = ({ bpm, activeSequence }: MapProps) => {
+const Map = ({ bpm, activeSequence, onControllerClick }: MapProps) => {
   const lightRefs = useRef<(HTMLElement | null)[]>([]);
 
-  // const [activeBlock, setActiveBlock] = useState("");
+  // const updateLights = (index, config) => {
+  //   const lightRef = lightRefs.current[index];
+  //   if (lightRef) {
+  //     if (config.color) {
+  //       lightRef.style.backgroundColor = `rgb(${config.color[0]}, ${config.color[1]}, ${config.color[2]})`;
+  //     }
+  //     if (config.dimming || config.dimming === 0) {
+  //       lightRef.style.opacity = `${Math.max(config.dimming / 100, 0.2)}`;
+  //     }
+  //   }
+  // };
+
+  // useEffect(() => {
+  //   const loop = () => {
+  //     sequences[activeSequence].loop(updateLights, bpm);
+  //     setTimeout(() => {
+  //       loop();
+  //     }, (1000 * 60) / bpm);
+  //   };
+  //   if (activeSequence) loop();
+  // }, [activeSequence]);
 
   // const updateLight = async ({
   //   index,
@@ -81,12 +103,15 @@ const Map = ({ bpm, activeSequence }: MapProps) => {
                 ref={(ref) => {
                   lightRefs.current[index] = ref;
                 }}
-                title={`${IPS[index]}`}
+                title={`#${index} ${IPS[index]}`}
               ></div>
             </li>
           ))}
         </ol>
       </div>
+      <button className={styles.close} onClick={onControllerClick}>
+        Controller
+      </button>
       {/* <div className={styles.blocks}>
         <Wave
           active={activeBlock === "wave"}

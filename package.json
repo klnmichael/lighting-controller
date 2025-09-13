@@ -8,12 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "hub": "nodemon --exec ts-node ./hub/server.ts"
+    "hub": "HUB_PORT=8080 nodemon --exec ts-node ./hub/server.ts --port 8080"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "dgram": "^1.0.1",
-    "express": "^5.1.0",
     "extendable-media-recorder": "^9.2.29",
     "next": "15.5.2",
     "normalize.css": "^8.0.1",
@@ -27,12 +25,16 @@
     "@eslint/eslintrc": "^3",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
+    "@types/ip": "^1.1.3",
     "@types/node": "^24",
     "@types/randomcolor": "^0.5.9",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cors": "^2.8.5",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
+    "express": "^5.1.0",
+    "ip": "^2.0.1",
     "typescript": "^5"
   }
 }

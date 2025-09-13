@@ -1,13 +1,18 @@
 import { flashWhite, flashRandomColor, flashCustomColor } from "./flash.ts";
+import { alternatingWaveRandomColor } from "./wave.ts";
 
-const sequences: {
+export const sequences: {
   [name: string]: any;
 } = {
   flashWhite,
   flashRandomColor,
   flashCustomColor,
+  alternatingWaveRandomColor,
 };
 
-export default sequences;
-
-export const order = ["flashWhite", "flashRandomColor", "flashCustomColor"];
+export const order = [
+  "flashWhite",
+  "flashRandomColor",
+  "flashCustomColor",
+  "alternatingWaveRandomColor",
+];

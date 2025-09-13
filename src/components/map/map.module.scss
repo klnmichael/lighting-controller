@@ -1,23 +1,6 @@
 .container {
   position: relative;
 }
-.bpm {
-  padding: 1rem;
-  background-color: var(--gray-200);
-  display: flex;
-  gap: 0.1rem;
-  font-size: 1.2rem;
-  position: absolute;
-  left: 50%;
-  top: 1rem;
-  z-index: 1;
-  transform: translateX(-50%);
-  box-shadow: 0 0.25rem 1.5rem rgba(0, 0, 0, 0.5);
-
-  input {
-    width: 5rem;
-  }
-}
 .layout {
   width: 78svh;
   position: relative;
@@ -162,17 +145,8 @@
     }
   }
 }
-.blocks {
-  width: 25vw;
-  height: 100svh;
-  padding: 1rem;
-  box-sizing: border-box;
+.close {
   position: absolute;
   right: 0;
   top: 0;
-  overflow: auto;
-
-  > * + * {
-    margin-top: 1rem;
-  }
 }

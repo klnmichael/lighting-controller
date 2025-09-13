@@ -6,9 +6,8 @@
 
   button {
     aspect-ratio: 1;
-    padding: 1rem;
     box-shadow: 0 0.25rem 1.5rem rgba(0, 0, 0, 0.5);
-    background-image: linear-gradient(0deg, #aaa, #ccc);
+    background-image: linear-gradient(180deg, #bbb, #888);
     border: 0;
     border-radius: 10%;
 
@@ -24,21 +23,49 @@
   justify-content: space-between;
 
   button {
-    width: 5vw;
-    font-size: 1.4rem;
+    width: 6vw;
+    padding: 0;
+    font-size: 1.2vw;
+    font-weight: 500;
   }
   input {
-    width: 5vw;
-    height: 5vw;
-    font-size: 1.4rem;
+    width: 6vw;
+    height: 6vw;
+    font-size: 1.5vw;
+    font-weight: 500;
+    background-color: black;
+    box-shadow: 0 0.25rem 1.5rem rgba(0, 0, 0, 0.5);
+    color: white;
     border: 0;
+    border-radius: 10%;
     box-sizing: border-box;
     text-align: center;
+
+    &[type="number"]::-webkit-outer-spin-button,
+    &[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    &[type="number"] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
   }
 }
+.core,
 .bpm {
   display: flex;
-  gap: 0.5rem;
+  gap: 1.25rem;
+}
+.shuffle {
+  &[data-active="true"] {
+    outline: 0.5vw solid #f00;
+  }
+}
+.decrease,
+.increase {
+  font-size: 2vw !important;
 }
 .pad {
   padding: 2.5vw 5vw;
@@ -47,14 +74,16 @@
   display: flex;
   gap: 2.5vw;
   flex-wrap: wrap;
+  justify-content: center;
 
   button {
     width: 10vw;
-    font-size: 1.6rem;
+    padding: 0 1rem;
+    font-size: 1.5vw;
     font-weight: 500;
 
     &[data-active="true"] {
-      outline: 0.5rem solid #f00;
+      outline: 0.8vw solid #f00;
     }
   }
 }

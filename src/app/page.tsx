@@ -1,16 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Map from "@/components/map";
 import Controls from "@/components/controls";
 
 export default function Home() {
   const [bpm, setBpm] = useState(125);
   const [sequence, setSequence] = useState("");
+  const [controller, setController] = useState(false);
+
+  const hubUrl = process.env.NEXT_PUBLIC_HUB_URL;
+
+  const cue = () => {
+    setSequence("");
+    fetch(`${hubUrl}/cue`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+  };
+
+  const pause = () => {
+    setSequence("");
+    fetch(`${hubUrl}/pause`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+  };
 
   const updateBpm = (value: number) => {
     setBpm(value);
-    fetch("http://192.168.50.150:3000/bpm", {
+    fetch(`${hubUrl}/bpm`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -21,7 +46,7 @@ export default function Home() {
 
   const startSequence = (name: string) => {
     setSequence(name);
-    fetch("http://192.168.50.150:3000/sequence/start", {
+    fetch(`${hubUrl}/sequence/start`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -31,7 +56,7 @@ export default function Home() {
   };
 
   const updateSequence = (config: any) => {
-    fetch("http://192.168.50.150:3000/sequence/update", {
+    fetch(`${hubUrl}/sequence/update`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40,28 +65,27 @@ export default function Home() {
     });
   };
 
-  const pauseSequences = () => {
-    setSequence("");
-    fetch("http://192.168.50.150:3000/sequence/pause", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
-  };
+  useEffect(() => updateBpm(125), []);
 
   return (
     <>
-      <Map bpm={bpm} activeSequence={sequence} />
-      <Controls
+      <Map
         bpm={bpm}
         activeSequence={sequence}
-        onBpmChange={updateBpm}
-        startSequence={startSequence}
-        updateSequence={updateSequence}
-        pauseSequences={pauseSequences}
+        onControllerClick={() => setController(true)}
       />
+      {controller && (
+        <Controls
+          bpm={bpm}
+          activeSequence={sequence}
+          onCue={cue}
+          onPause={pause}
+          onBpmChange={updateBpm}
+          onStartSequence={startSequence}
+          onUpdateSequence={updateSequence}
+          onClose={() => setController(false)}
+        />
+      )}
     </>
   );
 }
