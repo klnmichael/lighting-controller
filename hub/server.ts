@@ -22,13 +22,13 @@ const purgeSequenceTimeouts = () => {
   timeouts = [];
 };
 
-const startLoop = () => {
-  timeouts = sequences[sequence].loop(updateWizLight, bpm);
+const loop = () => {
+  if (currentBeat === 0 || !(currentBeat % sequences[sequence].beats)) {
+    timeouts = sequences[sequence].loop(updateWizLight, bpm);
+  }
   loopTimeout = setTimeout(() => {
-    if (++currentBeat >= sequences[sequence].beat) {
-      currentBeat = 0;
-      startLoop();
-    }
+    loop();
+    ++currentBeat;
   }, (1000 * 60) / bpm);
 };
 
@@ -40,9 +40,9 @@ const stopLoop = () => {
 };
 
 app.post("/cue", async (req, res) => {
-  stopLoop();
   purgeSequenceTimeouts();
-  startLoop();
+  stopLoop();
+  loop();
   res.status(200).json({});
 });
 
@@ -55,14 +55,14 @@ app.post("/pause", async (req, res) => {
 
 app.post("/bpm", async (req, res) => {
   bpm = req.body.value;
-  console.log(bpm);
   res.status(200).json({});
 });
 
 app.post("/sequence/start", async (req, res) => {
   purgeSequenceTimeouts();
   sequence = req.body.name;
-  if (!loopTimeout) startLoop();
+  currentBeat = 0;
+  if (!loopTimeout) loop();
   res.status(200).json({});
 });
 

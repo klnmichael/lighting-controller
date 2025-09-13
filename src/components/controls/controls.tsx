@@ -34,7 +34,7 @@ const Controls = ({
     const currentTime = new Date().getTime();
     tapTimes.current.push(currentTime);
     if (tapTimes.current.length > 10) tapTimes.current.shift();
-    if (tapTimes.current.length > 1) {
+    if (tapTimes.current.length > 2) {
       let totalInterval = 0;
       for (let i = 1; i < tapTimes.current.length; i++) {
         totalInterval += tapTimes.current[i] - tapTimes.current[i - 1];
@@ -46,7 +46,7 @@ const Controls = ({
     if (resetTapTimeout.current) clearTimeout(resetTapTimeout.current);
     resetTapTimeout.current = setTimeout(() => {
       tapTimes.current = [];
-    }, 2000);
+    }, 3000);
   };
 
   return (
