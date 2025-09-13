@@ -20,6 +20,7 @@
     "randomcolor": "^0.6.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",
+    "realtime-bpm-analyzer": "^4.0.2",
     "sass": "^1.92.1",
     "web-audio-beat-detector": "^8.2.30"
   },

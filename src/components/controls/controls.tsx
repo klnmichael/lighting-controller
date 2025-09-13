@@ -2,6 +2,7 @@
 
 import sequences, { order } from "@/lib/sequences";
 import styles from "./controls.module.scss";
+import LiveBpmTracker from "../../../bpm-detector/bpm-detector";
 
 export interface MapProps {
   bpm?: number;
@@ -23,6 +24,7 @@ const Controls = ({
   return (
     <section className={styles.container}>
       <div className={styles.header}>
+        <LiveBpmTracker/>
         <button onClick={() => pauseSequences()}>Pause</button>
         <div className={styles.bpm}>
           <input
