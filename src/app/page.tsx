@@ -12,7 +12,6 @@ export default function Home() {
   const hubUrl = process.env.NEXT_PUBLIC_HUB_URL;
 
   const cue = () => {
-    setSequence("");
     fetch(`${hubUrl}/cue`, {
       method: "POST",
       headers: {
