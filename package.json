@@ -8,17 +8,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "hub": "HUB_PORT=8080 nodemon --exec ts-node ./hub/server.ts --port 8080"
+    "hub": "HUB_PORT=3000 nodemon --exec ts-node ./hub/server.ts --port 3000"
   },
   "dependencies": {
     "dgram": "^1.0.1",
-    "extendable-media-recorder": "^9.2.29",
-    "next": "15.5.2",
+    "extendable-media-recorder": "^9.2.30",
+    "next": "15.5.4",
     "normalize.css": "^8.0.1",
     "randomcolor": "^0.6.2",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "sass": "^1.92.1",
+    "sass": "^1.93.2",
     "web-audio-beat-detector": "^8.2.30"
   },
   "devDependencies": {
@@ -32,7 +32,7 @@
     "@types/react-dom": "^19",
     "cors": "^2.8.5",
     "eslint": "^9",
-    "eslint-config-next": "15.5.2",
+    "eslint-config-next": "15.5.4",
     "express": "^5.1.0",
     "ip": "^2.0.1",
     "typescript": "^5"

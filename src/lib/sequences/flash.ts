@@ -1,82 +1,14 @@
-import randomColor from "randomcolor";
-import type { Color } from "../../types/global.ts";
-import { IPS } from "../constants.ts";
-
 export const flashWhite = {
   label: "Flash White",
-  beats: 1,
-  loop: (updateLight: any, bpm: number) => {
-    IPS.forEach((_, index) => {
-      updateLight(index, {
-        color: [255, 255, 255],
-        dimming: 100,
-      });
-    });
-    return [
-      setTimeout(
-        () =>
-          IPS.forEach((_, index) => {
-            updateLight(index, {
-              dimming: 0,
-            });
-          }),
-        (1000 * 60) / bpm / 2
-      ),
-    ];
-  },
+  timeline: () => [[{ color: [255, 255, 255] }], [], [{ dimming: 0 }], []],
 };
 
-export const flashRandomColor = {
-  label: "Flash Random Color",
-  beats: 1,
-  loop: (updateLight: any, bpm: number) => {
-    IPS.forEach((_, index) => {
-      const color = randomColor({
-        luminosity: "bright",
-        format: "rgbArray",
-      }) as unknown as Color;
-      updateLight(index, {
-        color,
-        dimming: 100,
-      });
-    });
-    return [
-      setTimeout(() => {
-        IPS.forEach((_, index) => {
-          updateLight(index, {
-            dimming: 0,
-          });
-        });
-      }, (1000 * 60) / bpm / 2),
-    ];
-  },
+export const flashRandom = {
+  label: "Flash Random",
+  timeline: () => [[{ randomColor: true }], [], [{ dimming: 0 }], []],
 };
 
-let customColor: Color = [255, 0, 255];
-
-export const flashCustomColor = {
-  label: "Flash Custom Color",
-  beats: 1,
-  loop: (updateLight: any, bpm: number) => {
-    IPS.forEach((_, index) => {
-      updateLight(index, {
-        color: customColor,
-        dimming: 100,
-      });
-    });
-    return [
-      setTimeout(
-        () =>
-          IPS.forEach((_, index) => {
-            updateLight(index, {
-              dimming: 0,
-            });
-          }),
-        (1000 * 60) / bpm / 2
-      ),
-    ];
-  },
-  update: ({ color }: any) => {
-    customColor = color;
-  },
+export const flashCustom = {
+  label: "Flash Custom",
+  timeline: () => [[{ customColor: true }], [], [{ dimming: 0 }], []],
 };

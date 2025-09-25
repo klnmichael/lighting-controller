@@ -1,8 +1,10 @@
 .container {
   position: fixed;
-  background-color: var(--gray-200);
+  background-color: rgba(0, 0, 0, 0.1);
   inset: 0;
   z-index: 2;
+  opacity: 0.75;
+  backdrop-filter: blur(1rem);
 
   button {
     aspect-ratio: 1;
@@ -53,12 +55,12 @@
     }
   }
 }
-.core,
-.bpm {
+.group {
   display: flex;
   gap: 1.25rem;
 }
-.shuffle {
+.shuffle,
+.colorShuffle {
   &[data-active="true"] {
     outline: 0.5vw solid #f00;
   }

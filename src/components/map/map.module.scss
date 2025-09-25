@@ -4,6 +4,8 @@
 .layout {
   width: 78svh;
   position: relative;
+  left: 50%;
+  transform: translateX(-50%);
 
   &::before {
     content: "";

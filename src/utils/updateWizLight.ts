@@ -2,8 +2,9 @@ import dgram from "dgram";
 import type { WizLight } from "../types/global.ts";
 import { IPS } from "../lib/constants.ts";
 
-export const updateWizLight = async (index: number, config: WizLight) => {
+export const updateWizLight = async (ip: number, config: WizLight) => {
   const params: WizLight = {
+    // state: true,
     // speed: 0,
     // fade: 0,
     // "fade-in": 0,
@@ -12,6 +13,10 @@ export const updateWizLight = async (index: number, config: WizLight) => {
 
   if (config.state !== undefined) {
     params.state = config.state;
+  }
+
+  if (config.dimming !== undefined) {
+    params.dimming = config.dimming;
   }
 
   if (config.color) {
@@ -27,33 +32,25 @@ export const updateWizLight = async (index: number, config: WizLight) => {
       255 * 3
     ) {
       params.temp = 5000;
-      params.dimming = 50;
+      params.dimming =
+        config.dimming !== undefined && config.dimming < 35
+          ? config.dimming
+          : 35;
     }
   }
 
-  if (config.dimming || config.dimming === 0) {
-    params.dimming = config.dimming < 10 ? 10 : config.dimming;
-  }
+  console.log(`192.168.1.${ip}`, params);
 
-  const message = {
-    method: "setPilot",
-    env: "pro",
-    params,
-  };
+  const client = dgram.createSocket("udp4");
+  const buffer = Buffer.from(
+    JSON.stringify({
+      method: "setPilot",
+      // env: "pro",
+      params,
+    })
+  );
 
-  const ip = `192.168.1.${IPS[index]}`;
-
-  // console.log(ip, params);
-
-  // const client = dgram.createSocket("udp4");
-  // const buffer = Buffer.from(JSON.stringify(message));
-
-  // await client.send(buffer, 0, buffer.length, 38899, ip, (e) => {
-  //   if (e) {
-  //     console.error(e);
-  //   } else {
-  //     console.log(ip, message);
-  //   }
-  //   client.close();
-  // });
+  client.send(buffer, 0, buffer.length, 38899, `192.168.1.${ip}`, () => {
+    client.close();
+  });
 };

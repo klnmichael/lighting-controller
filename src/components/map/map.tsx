@@ -1,86 +1,191 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, useEffect, act } from "react";
+import { useRef, useEffect } from "react";
+import randomColor from "randomcolor";
 import type { Color } from "@/types/global";
 import { IPS } from "@/lib/constants";
-// import Wave from "../blocks/wave";
-// import Flash from "../blocks/flash";
-// import Sparkle from "../blocks/sparkle";
 import styles from "./map.module.scss";
 import { sequences } from "@/lib/sequences";
 
 export interface MapProps {
-  bpm?: number;
-  activeSequence?: any;
-  onControllerClick?: () => void;
+  sequence: string;
+  cueTimestamp: number;
+  shuffle: boolean;
+  bpm: number;
+  dimming: number;
+  customColor: Color;
+  colorShuffle: boolean;
 }
 
-const Map = ({ bpm, activeSequence, onControllerClick }: MapProps) => {
+const Map = ({
+  sequence,
+  cueTimestamp,
+  shuffle,
+  bpm,
+  dimming,
+  customColor,
+  colorShuffle,
+}: MapProps) => {
+  const activeSequence = useRef("");
+  const queuedSequence = useRef("");
+
+  const cueTimestampRef = useRef(cueTimestamp);
+  const shuffleRef = useRef(shuffle);
+  const bpmRef = useRef(bpm);
+  const dimmingRef = useRef(dimming);
+  const customColorRef = useRef<Color>(customColor);
+  const colorShuffleRef = useRef(colorShuffle);
+
+  const currentBeat = useRef(-1);
+  const currentTick = useRef(-1);
+
+  const loopInterval = useRef<ReturnType<typeof setInterval> | undefined>(
+    undefined
+  );
+
   const lightRefs = useRef<(HTMLElement | null)[]>([]);
 
-  // const updateLights = (index, config) => {
-  //   const lightRef = lightRefs.current[index];
-  //   if (lightRef) {
-  //     if (config.color) {
-  //       lightRef.style.backgroundColor = `rgb(${config.color[0]}, ${config.color[1]}, ${config.color[2]})`;
-  //     }
-  //     if (config.dimming || config.dimming === 0) {
-  //       lightRef.style.opacity = `${Math.max(config.dimming / 100, 0.2)}`;
-  //     }
-  //   }
-  // };
+  const updateLight = (ip: number, config: any) => {
+    const lightRef = lightRefs.current[IPS.indexOf(ip)];
+    if (lightRef) {
+      if (config.color) {
+        lightRef.style.backgroundColor = `rgb(${config.color[0]}, ${config.color[1]}, ${config.color[2]})`;
+      }
+      if (config.dimming || config.dimming === 0) {
+        lightRef.style.opacity = `${Math.max(config.dimming / 100, 0.2)}`;
+      }
+    }
+  };
+
+  const loop = () => {
+    const time = Date.now();
+    const beat =
+      ((time - cueTimestampRef.current) / (60000 / bpmRef.current)) % 8;
+    const beatFloor = Math.floor(beat);
+    const tick = (beat - beatFloor) * 4;
+    const tickFloor = Math.floor(tick);
+    if (currentBeat.current === beatFloor && currentTick.current === tickFloor)
+      return;
+    currentBeat.current = beatFloor;
+    currentTick.current = tickFloor;
+    // console.log(`${currentBeat.current + 1}/${currentTick.current + 1}`);
+    if (!(currentBeat.current % 2) && currentTick.current === 0) {
+      if (queuedSequence.current) {
+        activeSequence.current = queuedSequence.current;
+        queuedSequence.current = "";
+      }
+      customColorRef.current = randomColor({
+        luminosity: "bright",
+        format: "rgbArray",
+      }) as unknown as Color;
+    }
+    const timeline =
+      sequences[activeSequence.current]?.timeline({
+        beat: currentBeat.current,
+        tick: currentTick.current,
+      }) || [];
+    const timelineBeats = timeline.length / 4;
+    const barData =
+      timeline[(currentBeat.current % timelineBeats) * 4 + currentTick.current];
+    if (barData) {
+      barData.forEach((data: any) => {
+        if (!data) return;
+        [...(data.ips || IPS)].forEach((ip) => {
+          const params: any = {
+            dimming:
+              data.dimming || data.dimming === 0
+                ? data.dimming * dimmingRef.current
+                : dimmingRef.current,
+          };
+          if (data.color) params.color = data.color;
+          if (data.randomColor) {
+            params.color = randomColor({
+              luminosity: "bright",
+              format: "rgbArray",
+            }) as unknown as Color;
+          }
+          if (data.customColor) params.color = customColorRef.current;
+          if (data.randomDimming) {
+            params.dimming = Math.round(
+              (Math.random() * (data.randomDimming[1] - data.randomDimming[0]) +
+                data.randomDimming[0]) *
+                dimmingRef.current
+            );
+          }
+          updateLight(ip, params);
+        });
+      });
+    }
+  };
+
+  const startLoop = () => {
+    if (!loopInterval.current) {
+      currentBeat.current = -1;
+      currentTick.current = -1;
+      loop();
+      loopInterval.current = setInterval(loop, 1000 / 60);
+    }
+  };
+
+  const stopLoop = () => {
+    if (loopInterval.current) {
+      clearInterval(loopInterval.current);
+      loopInterval.current = undefined;
+    }
+  };
+
+  useEffect(() => {
+    cueTimestampRef.current = cueTimestamp;
+    shuffleRef.current = shuffle;
+    bpmRef.current = bpm;
+    dimmingRef.current = dimming;
+    customColorRef.current = customColor;
+    colorShuffleRef.current = colorShuffle;
+  }, [cueTimestamp, shuffle, bpm, dimming, customColor, colorShuffle]);
+
+  useEffect(() => {
+    if (sequence) {
+      if (activeSequence.current && sequence !== activeSequence.current) {
+        queuedSequence.current = sequence;
+      } else {
+        activeSequence.current = sequence;
+        startLoop();
+      }
+    } else {
+      stopLoop();
+      activeSequence.current = "";
+      queuedSequence.current = "";
+    }
+  }, [sequence]);
 
   // useEffect(() => {
-  //   const loop = () => {
-  //     sequences[activeSequence].loop(updateLights, bpm);
-  //     setTimeout(() => {
-  //       loop();
-  //     }, (1000 * 60) / bpm);
-  //   };
-  //   if (activeSequence) loop();
-  // }, [activeSequence]);
-
-  // const updateLight = async ({
-  //   index,
-  //   color,
-  //   dimming,
-  // }: {
-  //   index: number;
-  //   color?: Color;
-  //   dimming?: number;
-  // }) => {
-  //   const lightRef = lightRefs.current[index];
-  //   if (lightRef) {
-  //     if (color) {
-  //       lightRef.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+  //   if (sequence) {
+  //     if (sequence === "dark") {
+  //       stopLoop();
+  //       activeSequence.current = sequence;
+  //       startLoop();
+  //     } else {
+  //       if (activeSequence.current) {
+  //         if (activeSequence.current === "dark") {
+  //           stopLoop();
+  //           activeSequence.current = sequence;
+  //           startLoop();
+  //         } else {
+  //           queuedSequence.current = sequence;
+  //         }
+  //       } else {
+  //         activeSequence.current = sequence;
+  //         startLoop();
+  //       }
   //     }
-  //     if (dimming || dimming === 0) {
-  //       lightRef.style.opacity = `${Math.max(dimming / 100, 0.2)}`;
-  //     }
+  //   } else {
+  //     stopLoop();
+  //     activeSequence.current = "";
+  //     queuedSequence.current = "";
   //   }
-  //   fetch("http://192.168.50.150:3000", {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify({ ip: IPS[index], color, dimming }),
-  //   });
-  // };
-
-  // useEffect(() => {
-  //   const onDocumentKeydown = (e: KeyboardEvent) => {
-  //     switch (e.code) {
-  //       case "Escape":
-  //         setActiveBlock("");
-  //         break;
-  //     }
-  //   };
-  //   document.addEventListener("keydown", onDocumentKeydown);
-  //   return () => {
-  //     document.removeEventListener("keydown", onDocumentKeydown);
-  //   };
-  // }, []);
+  //   if (!loopTimeout) startLoop();
+  // }, [sequence]);
 
   return (
     <section className={styles.container}>
@@ -109,29 +214,6 @@ const Map = ({ bpm, activeSequence, onControllerClick }: MapProps) => {
           ))}
         </ol>
       </div>
-      <button className={styles.close} onClick={onControllerClick}>
-        Controller
-      </button>
-      {/* <div className={styles.blocks}>
-        <Wave
-          active={activeBlock === "wave"}
-          bpm={bpm}
-          updateLight={updateLight}
-          onRun={(state) => setActiveBlock(state ? "wave" : "")}
-        />
-        <Flash
-          active={activeBlock === "flash"}
-          bpm={bpm}
-          updateLight={updateLight}
-          onRun={(state) => setActiveBlock(state ? "flash" : "")}
-        />
-        <Sparkle
-          active={activeBlock === "sparkle"}
-          bpm={bpm}
-          updateLight={updateLight}
-          onRun={(state) => setActiveBlock(state ? "sparkle" : "")}
-        />
-      </div> */}
     </section>
   );
 };
