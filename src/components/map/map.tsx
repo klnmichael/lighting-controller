@@ -75,6 +75,8 @@ const Map = ({
         activeSequence.current = queuedSequence.current;
         queuedSequence.current = "";
       }
+    }
+    if (!(currentBeat.current % 4) && currentTick.current === 0) {
       customColorRef.current = randomColor({
         luminosity: "bright",
         format: "rgbArray",

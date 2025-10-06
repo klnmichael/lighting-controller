@@ -243,6 +243,10 @@ export const waveRadiateRandom = {
           color: colorCached,
         },
       ],
+      [],
+      [],
+      [],
+      [],
     ];
   },
 };
