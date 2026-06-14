@@ -77,7 +77,7 @@ const loop = () => {
           params.dimming = Math.round(
             (Math.random() * (data.randomDimming[1] - data.randomDimming[0]) +
               data.randomDimming[0]) *
-              dimming
+              dimming,
           );
         }
         if (data.state !== undefined) {

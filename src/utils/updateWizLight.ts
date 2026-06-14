@@ -27,7 +27,7 @@ export const updateWizLight = async (ip: number, config: WizLight) => {
       config.color.reduce(
         (accumulator: number, currentValue: number) =>
           accumulator + currentValue,
-        0
+        0,
       ) ===
       255 * 3
     ) {
@@ -39,7 +39,7 @@ export const updateWizLight = async (ip: number, config: WizLight) => {
     }
   }
 
-  console.log(`192.168.1.${ip}`, params);
+  // console.log(`192.168.1.${ip}`, params);
 
   const client = dgram.createSocket("udp4");
   const buffer = Buffer.from(
@@ -47,7 +47,7 @@ export const updateWizLight = async (ip: number, config: WizLight) => {
       method: "setPilot",
       // env: "pro",
       params,
-    })
+    }),
   );
 
   client.send(buffer, 0, buffer.length, 38899, `192.168.1.${ip}`, () => {
