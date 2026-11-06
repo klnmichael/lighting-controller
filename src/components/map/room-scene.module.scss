@@ -1,0 +1,39 @@
+.container {
+  position: relative;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  min-height: 36rem;
+}
+
+.viewport {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+
+  canvas {
+    display: block;
+    touch-action: none;
+  }
+}
+
+.labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lightLabel {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #647082;
+  border-radius: 0.4rem;
+  background: #000;
+  color: #fff;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: auto;
+  user-select: none;
+}

@@ -1,0 +1,12 @@
+.container {
+  position: relative;
+  font-size: 1.4vw;
+  display: flex;
+  align-items: center;
+
+  span {
+    width: 2.2vw;
+    display: inline-block;
+    text-align: center;
+  }
+}

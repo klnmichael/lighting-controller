@@ -1,42 +1,130 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { type ButtonHTMLAttributes, useRef } from "react";
+import { createRealtimeBpmAnalyzer } from "realtime-bpm-analyzer";
 import type { Color } from "@/types/global";
-import { sequences, order } from "@/lib/sequences";
+import { sequences, sequenceOrder } from "@/lib/sequences";
+import { accents, accentOrder } from "@/lib/accents";
+import {
+  ACCENT_COLORS,
+  ACTIVE_COLORS,
+  COLOR_MODES,
+  SEQUENCE_COLORS,
+} from "@/lib/constants";
+import Count from "../count";
 import styles from "./controls.module.scss";
 
+const PressButton = ({
+  onPress,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { onPress: () => void }) => {
+  return (
+    <button
+      type="button"
+      {...props}
+      // onMouseDown={() => {
+      //   if (!props.disabled) onPress();
+      // }}
+      // onTouchStart={() => {
+      //   if (!props.disabled) onPress();
+      // }}
+      onPointerDown={() => {
+        if (!props.disabled) onPress();
+      }}
+    />
+  );
+};
+
+interface SliderProps {
+  value: number;
+  onChange: (value: number) => void;
+}
+
+const Slider = ({ value, onChange }: SliderProps) => {
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const brightness = value;
+
+  const updateValue = (clientY: number) => {
+    if (!sliderRef.current) return;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const nextBrightness =
+      Math.round(((rect.bottom - clientY) / rect.height) * 100) / 100;
+    onChange(Math.min(1, Math.max(0, nextBrightness)));
+  };
+
+  return (
+    <div
+      ref={sliderRef}
+      className={styles.slider}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        updateValue(e.clientY);
+      }}
+      onPointerMove={(e) => {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          updateValue(e.clientY);
+        }
+      }}
+    >
+      <div
+        className={styles.slider__progress}
+        style={{ transform: `scaleY(${brightness})` }}
+      ></div>
+      <div className={styles.slider__value}>
+        {Math.round(brightness * 100)}%
+      </div>
+    </div>
+  );
+};
+
 export interface MapProps {
-  sequence?: string;
-  shuffle: boolean;
+  cueTimestamp: number;
   bpm: number;
-  dimming: number;
-  customColor: Color;
-  colorShuffle: boolean;
-  onSequence: (timestamp: number, sequence: string) => void;
+  sequence?: string;
+  sequenceColorMode?: string;
+  sequenceColor?: Color;
+  sequenceDimming: number;
+  accent?: string;
+  accentColorMode?: string;
+  accentColor?: Color;
+  accentDimming: number;
+  onToggle: () => void;
+  onOpenPreview: () => void;
   onCue: (timestamp: number) => void;
-  onPause: () => void;
-  onShuffle: (value: boolean) => void;
   onBpm: (bpm: number) => void;
-  onDimming: (bpm: number) => void;
-  onColor: (config: any) => void;
-  onColorShuffle: (value: boolean) => void;
+  onSequence: (timestamp: number, sequence: string) => void;
+  onSequenceColorMode: (mode: string) => void;
+  onSequenceColor: (color: Color) => void;
+  onSequenceDimming: (dimming: number) => void;
+  onAccent: (accent: string) => void;
+  onAccentColorMode: (mode: string) => void;
+  onAccentColor: (color: Color) => void;
+  onAccentDimming: (dimming: number) => void;
 }
 
 const Controls = ({
-  sequence,
-  shuffle,
+  cueTimestamp,
   bpm,
-  dimming,
-  customColor,
-  colorShuffle,
-  onSequence,
+  sequence,
+  sequenceColorMode,
+  sequenceColor,
+  sequenceDimming,
+  accent,
+  accentColorMode,
+  accentColor,
+  accentDimming,
+  onToggle,
+  onOpenPreview,
   onCue,
-  onPause,
-  onShuffle,
   onBpm,
-  onDimming,
-  onColor,
-  onColorShuffle,
+  onSequence,
+  onSequenceColorMode,
+  onSequenceColor,
+  onSequenceDimming,
+  onAccent,
+  onAccentColorMode,
+  onAccentColor,
+  onAccentDimming,
 }: MapProps) => {
   const resetTapTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const tapTimes = useRef<number[]>([]);
@@ -52,7 +140,7 @@ const Controls = ({
       }
       const averageInterval = totalInterval / (tapTimes.current.length - 1);
       const bpm = 60000 / averageInterval;
-      onBpm(Math.round(bpm));
+      onBpm(Math.floor(bpm));
     }
     if (resetTapTimeout.current) clearTimeout(resetTapTimeout.current);
     resetTapTimeout.current = setTimeout(() => {
@@ -60,41 +148,48 @@ const Controls = ({
     }, 3000);
   };
 
-  const rgbToHex = (rgb: Color) => {
-    let hexR = rgb[0].toString(16);
-    let hexG = rgb[1].toString(16);
-    let hexB = rgb[2].toString(16);
-    if (hexR.length === 1) hexR = "0" + hexR;
-    if (hexG.length === 1) hexG = "0" + hexG;
-    if (hexB.length === 1) hexB = "0" + hexB;
-    return "#" + hexR + hexG + hexB;
+  const onBpmListen = async () => {
+    const audioContext = new AudioContext();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioSource = audioContext.createMediaStreamSource(stream);
+
+    const analyzer = await createRealtimeBpmAnalyzer(audioContext);
+
+    audioSource.connect(analyzer.node);
+
+    analyzer.on("bpm", (data) => {
+      if (data.bpm && data.bpm.length > 0) {
+        const topCandidate = data.bpm[0];
+        onBpm(topCandidate.tempo);
+      }
+    });
   };
+
+  // const rgbToHex = (rgb: Color) => {
+  //   let hexR = rgb[0].toString(16);
+  //   let hexG = rgb[1].toString(16);
+  //   let hexB = rgb[2].toString(16);
+  //   if (hexR.length === 1) hexR = "0" + hexR;
+  //   if (hexG.length === 1) hexG = "0" + hexG;
+  //   if (hexB.length === 1) hexB = "0" + hexB;
+  //   return "#" + hexR + hexG + hexB;
+  // };
 
   return (
     <section className={styles.container}>
       <div className={styles.header}>
         <div className={styles.group}>
-          <button onClick={() => onCue(Date.now())}>Cue</button>
-          <button
-            onClick={() => {
-              onShuffle(false);
-              onPause();
-            }}
-          >
-            Pause
-          </button>
-          <button
-            className={styles.shuffle}
-            data-active={shuffle}
-            onClick={() => onShuffle(!shuffle)}
-          >
-            Shuffle
-          </button>
+          <PressButton onPress={onToggle}>I/O</PressButton>
+          <PressButton onPress={() => onCue(Date.now())}>CUE</PressButton>
         </div>
         <div className={styles.group}>
-          <button className={styles.decrease} onClick={() => onBpm(bpm - 1)}>
+          <Count cueTimestamp={cueTimestamp} bpm={bpm} sequence={sequence} />
+          <PressButton
+            className={styles.decrease}
+            onPress={() => onBpm(bpm - 1)}
+          >
             -
-          </button>
+          </PressButton>
           <input
             type="number"
             value={bpm}
@@ -102,57 +197,157 @@ const Controls = ({
             onFocus={(e) => e.target.select()}
             onChange={(e) => onBpm(parseFloat(e.target.value) || 1)}
           />
-          <button className={styles.increase} onClick={() => onBpm(bpm + 1)}>
-            +
-          </button>
-          <button onClick={() => onBpmTap()}>Tap</button>
-        </div>
-        <div className={styles.group}>
-          <input
-            type="number"
-            value={dimming}
-            min={0}
-            max={100}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => onDimming(parseFloat(e.target.value))}
-          />
-          <input
-            type="color"
-            value={rgbToHex(customColor)}
-            onChange={(e) => {
-              const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(
-                e.target.value
-              );
-              if (result) {
-                onColor([
-                  parseInt(result[1], 16),
-                  parseInt(result[2], 16),
-                  parseInt(result[3], 16),
-                ]);
-              }
-            }}
-          />
-          <button
-            className={styles.colorShuffle}
-            data-active={colorShuffle}
-            onClick={() => onColorShuffle(!colorShuffle)}
+          <PressButton
+            className={styles.increase}
+            onPress={() => onBpm(bpm + 1)}
           >
-            Color Shuffle
-          </button>
+            +
+          </PressButton>
+          <PressButton onPress={onBpmTap}>TAP</PressButton>
+          <PressButton onPress={onBpmListen}>LISTEN</PressButton>
+          <PressButton onPress={onOpenPreview}>3D</PressButton>
         </div>
       </div>
-      <ul className={styles.pad}>
-        {order.map((name) => (
-          <li key={name}>
-            <button
-              onClick={() => onSequence(Date.now(), name)}
-              data-active={name === sequence}
+      <div className={styles.pad}>
+        <div className={styles.column}>
+          <div className={styles.column__primary}>
+            <PressButton
+              onPress={() =>
+                onSequence(Date.now(), "random" === sequence ? "" : "random")
+              }
+              data-active={"random" === sequence}
             >
-              {sequences[name].label}
-            </button>
-          </li>
-        ))}
-      </ul>
+              Random
+            </PressButton>
+            <PressButton
+              onPress={() =>
+                onSequence(Date.now(), "dark" === sequence ? "" : "dark")
+              }
+              data-active={"dark" === sequence}
+            >
+              Dark
+            </PressButton>
+            <PressButton
+              onPress={() =>
+                onSequence(Date.now(), "full" === sequence ? "" : "full")
+              }
+              data-active={"full" === sequence}
+            >
+              Full
+            </PressButton>
+            <PressButton
+              onPress={() =>
+                onSequence(Date.now(), "flash" === sequence ? "" : "flash")
+              }
+              data-active={"flash" === sequence}
+            >
+              Flash
+            </PressButton>
+            {sequenceOrder.map((name) => (
+              <PressButton
+                key={name}
+                onPress={() => onSequence(Date.now(), name)}
+                data-active={name === sequence}
+              >
+                {sequences[name].title}
+              </PressButton>
+            ))}
+          </div>
+          <div className={styles.column__secondary}>
+            <PressButton
+              title={COLOR_MODES[0]}
+              style={{
+                background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
+              }}
+              data-active={sequenceColorMode === COLOR_MODES[0]}
+              onPress={() => onSequenceColorMode(COLOR_MODES[0])}
+            />
+            <PressButton
+              title={COLOR_MODES[1]}
+              style={{
+                background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
+              }}
+              data-active={sequenceColorMode === COLOR_MODES[1]}
+              onPress={() => onSequenceColorMode(COLOR_MODES[1])}
+            />
+            {SEQUENCE_COLORS.map((color, index) => (
+              <PressButton
+                key={index}
+                title={`${color[0]}, ${color[1]}, ${color[2]}`}
+                style={{
+                  background: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+                }}
+                data-active={
+                  sequenceColor &&
+                  color[0] === sequenceColor[0] &&
+                  color[1] === sequenceColor[1] &&
+                  color[2] === sequenceColor[2] &&
+                  sequenceColorMode === COLOR_MODES[2]
+                }
+                onPress={() => {
+                  onSequenceColorMode(COLOR_MODES[2]);
+                  onSequenceColor(color);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className={styles.column}>
+          <Slider value={sequenceDimming} onChange={onSequenceDimming} />
+        </div>
+        <div className={styles.column}>
+          <div className={styles.column__primary}>
+            <PressButton
+              onPress={() => onAccent("random" === accent ? "" : "random")}
+              data-active={"random" === accent}
+            >
+              Random
+            </PressButton>
+            {accentOrder.map((name) => (
+              <PressButton
+                key={name}
+                onPress={() => onAccent(name === accent ? "" : name)}
+                data-active={name === accent}
+              >
+                {accents[name].title}
+              </PressButton>
+            ))}
+          </div>
+          <div className={styles.column__secondary}>
+            <PressButton
+              title={COLOR_MODES[0]}
+              style={{
+                background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
+              }}
+              data-active={accentColorMode === COLOR_MODES[0]}
+              onPress={() => onAccentColorMode(COLOR_MODES[0])}
+            />
+            {ACCENT_COLORS.map((color, index) => (
+              <PressButton
+                key={index}
+                title={`${color[0]}, ${color[1]}, ${color[2]}`}
+                style={{
+                  background: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+                }}
+                data-active={
+                  accentColor &&
+                  color[0] === accentColor[0] &&
+                  color[1] === accentColor[1] &&
+                  color[2] === accentColor[2] &&
+                  accentColorMode === COLOR_MODES[2]
+                }
+                onPress={() => {
+                  onAccentColorMode(COLOR_MODES[2]);
+                  onAccentColor(color);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className={styles.column}>
+          <Slider value={accentDimming} onChange={onAccentDimming} />
+        </div>
+      </div>
     </section>
   );
 };
