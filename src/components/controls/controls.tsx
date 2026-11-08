@@ -212,33 +212,25 @@ const Controls = ({
         <div className={styles.column}>
           <div className={styles.column__primary}>
             <PressButton
-              onPress={() =>
-                onSequence(Date.now(), "random" === sequence ? "" : "random")
-              }
+              onPress={() => onSequence(Date.now(), "random")}
               data-active={"random" === sequence}
             >
               Random
             </PressButton>
             <PressButton
-              onPress={() =>
-                onSequence(Date.now(), "dark" === sequence ? "" : "dark")
-              }
+              onPress={() => onSequence(Date.now(), "dark")}
               data-active={"dark" === sequence}
             >
               Dark
             </PressButton>
             <PressButton
-              onPress={() =>
-                onSequence(Date.now(), "full" === sequence ? "" : "full")
-              }
+              onPress={() => onSequence(Date.now(), "full")}
               data-active={"full" === sequence}
             >
               Full
             </PressButton>
             <PressButton
-              onPress={() =>
-                onSequence(Date.now(), "flash" === sequence ? "" : "flash")
-              }
+              onPress={() => onSequence(Date.now(), "flash")}
               data-active={"flash" === sequence}
             >
               Flash

@@ -4,6 +4,7 @@ import {
   waveDoorWindow,
   waveAlternating,
   waveRadiate,
+  waveWallKitchen,
   waveKitchenWall,
 } from "./wave.ts";
 
@@ -54,7 +55,16 @@ export const sequences: {
   },
   twinkle: {
     title: "Twinkle",
-    timeline: () => [[{ randomDimming: [0, 1] }], [], [], []],
+    timeline: () => [[{ randomDimming: [0.25, 1] }], [], [], []],
+  },
+  twinkleFast: {
+    title: "Twinkle Fast",
+    timeline: () => [
+      [{ randomDimming: [0.5, 1] }],
+      [],
+      [{ randomDimming: [0.5, 1] }],
+      [],
+    ],
   },
   flash: {
     title: "Flash",
@@ -64,6 +74,7 @@ export const sequences: {
   waveDoorWindow,
   waveAlternating,
   waveRadiate,
+  waveWallKitchen,
   waveKitchenWall,
   pulsate: {
     title: "Pulsate",
@@ -187,13 +198,13 @@ export const sequences: {
     title: "1 Circle",
     timeline: () => circleTimeline(1),
   },
-  circle2: {
-    title: "2 Circle",
-    timeline: () => circleTimeline(2),
-  },
   circle1Reverse: {
     title: "1 Circle Reverse",
     timeline: () => circleTimeline(1, -1),
+  },
+  circle2: {
+    title: "2 Circle",
+    timeline: () => circleTimeline(2),
   },
   circle2Reverse: {
     title: "2 Circle Reverse",
@@ -203,14 +214,16 @@ export const sequences: {
 
 export const sequenceOrder = [
   "twinkle",
+  "twinkleFast",
   "waveWindowDoor",
   "waveDoorWindow",
   "waveAlternating",
   "waveRadiate",
+  "waveWallKitchen",
   "waveKitchenWall",
   "pulsate",
   "circle1",
-  "circle2",
   "circle1Reverse",
+  "circle2",
   "circle2Reverse",
 ];

@@ -186,6 +186,14 @@ export const waveAlternating = {
   },
 };
 
+export const waveWallKitchen = {
+  title: "Wave Kitchen Wall",
+  timeline: () => {
+    const rows = [...ROWS_X];
+    return waveXTimeline(rows);
+  },
+};
+
 export const waveKitchenWall = {
   title: "Wave Kitchen Wall",
   timeline: () => {

@@ -158,10 +158,9 @@ const Map = ({
     config: { color?: Color; dimming?: number },
   ) => {
     const light = lights.current[IPS.indexOf(ip)];
-    if (!light) throw new RangeError(`Unknown preview light: ${ip}`);
     if (config.color) light.color = config.color;
     if (config.dimming !== undefined) {
-      light.brightness = Math.max(0, Math.min(1, 1 - config.dimming));
+      light.brightness = (1 - config.dimming) * sequenceDimmingRef.current;
     }
     const element = lightRefs.current[IPS.indexOf(ip)];
     if (element) {
@@ -202,6 +201,24 @@ const Map = ({
       if (queueRef.current.accentColor)
         accentColorRef.current = queueRef.current.accentColor;
       queueRef.current = {};
+    }
+
+    if (!(currentBeat.current % 4) && currentTick.current === 0) {
+      if (activeSequence.current === "random") {
+        const availableSequences = sequenceOrder.filter(
+          (sequence) => sequence !== runningSequence.current,
+        );
+        runningSequence.current =
+          availableSequences[
+            Math.floor(Math.random() * availableSequences.length)
+          ];
+      }
+      if (activeAccent.current === "random")
+        runningAccent.current =
+          accentOrder[Math.floor(Math.random() * accentOrder.length)];
+    }
+
+    if (!(currentBeat.current % 2) && currentTick.current === 0) {
       if (sequenceColorModeRef.current === COLOR_MODES[0]) {
         sequenceColorRef.current =
           ACTIVE_COLORS[Math.floor(Math.random() * ACTIVE_COLORS.length)];
@@ -210,19 +227,6 @@ const Map = ({
         accentColorRef.current =
           ACCENT_COLORS[Math.floor(Math.random() * ACCENT_COLORS.length)];
       }
-    }
-
-    if (!(currentBeat.current % 8) && currentTick.current === 0) {
-      if (activeSequence.current === "random") {
-        const availableSequences = sequenceOrder.filter(
-          (sequence) => sequence !== runningSequence.current,
-        );
-        runningSequence.current =
-          availableSequences[Math.floor(Math.random() * availableSequences.length)];
-      }
-      if (activeAccent.current === "random")
-        runningAccent.current =
-          accentOrder[Math.floor(Math.random() * accentOrder.length)];
     }
 
     const lightMap: Record<number, { color?: Color; dimming?: number }> = {};
@@ -255,8 +259,6 @@ const Map = ({
               Math.random() * (data.randomDimming[1] - data.randomDimming[0]) +
               data.randomDimming[0];
           }
-          lightMap[ip].dimming =
-            (lightMap[ip].dimming ?? 0) + (1 - sequenceDimmingRef.current);
         });
       });
     }
@@ -275,7 +277,7 @@ const Map = ({
       accentTimelineData.forEach((data: any) => {
         data.ips.forEach((ip: number) => {
           if (!lightMap[ip]) lightMap[ip] = {};
-          lightMap[ip].dimming = data.dimming + (1 - accentDimmingRef.current);
+          lightMap[ip].dimming = data.dimming;
           lightMap[ip].color = accentColorRef.current;
         });
       });
@@ -343,8 +345,6 @@ const Map = ({
   useEffect(() => {
     accentDimmingRef.current = accentDimming;
   }, [accentDimming]);
-
-  useEffect(() => () => stopLoop(), []);
 
   return (
     <section className={styles.container} aria-label="2D lighting map">

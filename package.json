@@ -19,8 +19,8 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "realtime-bpm-analyzer": "^5.6.1",
-    "sass": "^1.107.1",
-    "three": "^0.182.0",
+    "sass": "^1.108.0",
+    "three": "^0.187.0",
     "web-audio-beat-detector": "^8.2.39"
   },
   "devDependencies": {
@@ -32,7 +32,7 @@
     "@types/randomcolor": "^0.5.9",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/three": "^0.182.0",
+    "@types/three": "^0.187.0",
     "cors": "^2.8.6",
     "eslint": "^10",
     "eslint-config-next": "16.4.5",

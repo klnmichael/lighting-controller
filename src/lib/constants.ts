@@ -1,4 +1,4 @@
-import type { Color } from "../types/global";
+import type { Color } from "../types/global.ts";
 
 // 216
 

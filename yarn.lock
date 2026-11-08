@@ -858,18 +858,17 @@
   resolved "https://registry.yarnpkg.com/@types/stats.js/-/stats.js-0.17.4.tgz#1933e5ff153a23c7664487833198d685c22e791e"
   integrity sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==
 
-"@types/three@^0.182.0":
-  version "0.182.0"
-  resolved "https://registry.yarnpkg.com/@types/three/-/three-0.182.0.tgz#2994f2cb87529ba21e4daa593e27cbf59c548f74"
-  integrity sha512-WByN9V3Sbwbe2OkWuSGyoqQO8Du6yhYaXtXLoA5FkKTUJorZ+yOHBZ35zUUPQXlAKABZmbYp5oAqpA4RBjtJ/Q==
+"@types/three@^0.187.0":
+  version "0.187.0"
+  resolved "https://registry.yarnpkg.com/@types/three/-/three-0.187.0.tgz#a585f892b15a328bb95204eedb2df23f96a467be"
+  integrity sha512-v+vKNarUtk4n2QRZ4+CN5ygMM0ARUjXjIQl0R/unMUfmStFeVqGbgqarbrpoGTXRZoulSH16ePrVJVxPJEbMUA==
   dependencies:
     "@dimforge/rapier3d-compat" "~0.12.0"
     "@tweenjs/tween.js" "~23.1.3"
     "@types/stats.js" "*"
     "@types/webxr" ">=0.5.17"
-    "@webgpu/types" "*"
-    fflate "~0.8.2"
-    meshoptimizer "~0.22.0"
+    fflate "~0.8.3"
+    meshoptimizer "~1.1.1"
 
 "@types/webxr@>=0.5.17":
   version "0.5.24"
@@ -1068,11 +1067,6 @@
   version "1.11.1"
   resolved "https://registry.yarnpkg.com/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz#538b1e103bf8d9864e7b85cc96fa8d6fb6c40777"
   integrity sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==
-
-"@webgpu/types@*":
-  version "0.1.74"
-  resolved "https://registry.yarnpkg.com/@webgpu/types/-/types-0.1.74.tgz#e0e0417074a90da1929c7bf710d6bb970aa91b13"
-  integrity sha512-lgiI4hbuLcI9unnm2cL/tvCaQU45dp0xcLWJh5uB/9MBGvIA4F8XIk7nSiBeg+K4xWGYwgZKn80LmERI5CxoTA==
 
 accepts@^2.0.0:
   version "2.0.0"
@@ -2064,7 +2058,7 @@ fdir@^6.4.4, fdir@^6.5.0:
   resolved "https://registry.yarnpkg.com/fdir/-/fdir-6.5.0.tgz#ed2ab967a331ade62f18d077dae192684d50d350"
   integrity sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==
 
-fflate@~0.8.2:
+fflate@~0.8.3:
   version "0.8.3"
   resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.8.3.tgz#bc27d8eb30343d4d512abb03480202ce65d825fc"
   integrity sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==
@@ -2750,10 +2744,10 @@ merge2@^1.3.0:
   resolved "https://registry.yarnpkg.com/merge2/-/merge2-1.4.1.tgz#4368892f885e907455a6fd7dc55c0c9d404990ae"
   integrity sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==
 
-meshoptimizer@~0.22.0:
-  version "0.22.0"
-  resolved "https://registry.yarnpkg.com/meshoptimizer/-/meshoptimizer-0.22.0.tgz#1ec36b075543e7d661f5ebc21339ae3dab4bc18c"
-  integrity sha512-IebiK79sqIy+E4EgOr+CAw+Ke8hAspXKzBd0JdgEmPHiAwmvEj2S4h1rfvo+o/BnfEYd/jAOg5IeeIjzlzSnDg==
+meshoptimizer@~1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/meshoptimizer/-/meshoptimizer-1.1.1.tgz#20c7d050d59bdc573154814f6a37d47d89908cca"
+  integrity sha512-oRFNWJRDA/WTrVj7NWvqa5HqE1t9MYDj2VaWirQCzCCrAd2GHrqR/sQezCxiWATPNlKTcRaPRHPJwIRoPBAp5g==
 
 micromatch@^4.0.4, micromatch@^4.0.5:
   version "4.0.8"
@@ -3276,10 +3270,10 @@ safe-regex-test@^1.0.3, safe-regex-test@^1.1.0:
   resolved "https://registry.yarnpkg.com/safer-buffer/-/safer-buffer-2.1.2.tgz#44fa161b0187b9549dd84bb91802f9bd8385cd6a"
   integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
 
-sass@^1.107.1:
-  version "1.107.1"
-  resolved "https://registry.yarnpkg.com/sass/-/sass-1.107.1.tgz#a8a461744666e31f8973041a6b9ae7fcb265befd"
-  integrity sha512-aJ1/LvxOOb04YhmiBjzZn3jVwdHKol+OVhoMV6fFl02fF9T3i+5Mg9l/CnzqtM+NX5Jn5o3lAbs/ZJivTCLHfQ==
+sass@^1.108.0:
+  version "1.108.0"
+  resolved "https://registry.yarnpkg.com/sass/-/sass-1.108.0.tgz#f459d748b3dc8885e15b9cb9304979efd68e70ab"
+  integrity sha512-9HwnefouIfwY+XuA1rS5xOhALH5vsoe3SzYICG3MEwpkMbE7tpuh5ytZFRXUKPYkxY7lKdIbqxl+DxQGo8jwQQ==
   dependencies:
     chokidar "^5.0.0"
     immutable "^5.1.5"
@@ -3617,10 +3611,10 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
-three@^0.182.0:
-  version "0.182.0"
-  resolved "https://registry.yarnpkg.com/three/-/three-0.182.0.tgz#535b71b4335529d0eacdb1d30eba72bada3d0b54"
-  integrity sha512-GbHabT+Irv+ihI1/f5kIIsZ+Ef9Sl5A1Y7imvS5RQjWgtTPfPnZ43JmlYI7NtCRDK9zir20lQpfg8/9Yd02OvQ==
+three@^0.187.0:
+  version "0.187.0"
+  resolved "https://registry.yarnpkg.com/three/-/three-0.187.0.tgz#face29ee2de9bcc31a1b573a76f224e35e0b2894"
+  integrity sha512-Qiu7R+Cmh8CstZsY1uJOSWnVlfo7ZtNLV7mF8Jltk3LB3AtDu9cRZlcnRKkAk8Y4z6KKw35z7Y7Urd7jWY8etA==
 
 tinyglobby@^0.2.13:
   version "0.2.14"
