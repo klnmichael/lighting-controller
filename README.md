@@ -48,6 +48,42 @@ and preserving Circle 2's half-perimeter spacing. Both variants are available
 in the controls and random sequence selection; the original versions are unchanged.
 Automatic random-sequence changes exclude the currently running sequence.
 
+**Pacman Chase** (`pacmanChase`) sends two short fading trails clockwise along
+`OUTLINE`, followed by a third blinking chaser. Heads stay four positions apart,
+with two-position fades and at least one dark light between trails. The chaser
+is on for half a beat and off for half a beat; all three complete a lap every
+four beats. Non-outline lights remain dark unless overridden by an accent.
+The sequence is available in the controls and random sequence selection and
+uses the selected sequence color.
+
+Run its timeline and circle regression tests:
+
+```bash
+node --test src/lib/sequences/pacman.test.ts
+```
+
+Four rave-inspired patterns are also available in the controls and random selection:
+
+- **Laser Bounce** sweeps a narrow beam across the room's columns and back,
+  crossfading between neighboring columns.
+- **Radial Ripple** sends a smooth brightness wave outward through the four
+  radial rings.
+- **Zone Crossfade** passes the light from couch to kitchen to dance floor,
+  then back to the couch.
+- **Orbit Collision** sends two fading perimeter trails in opposite directions,
+  merging and separating as they pass.
+
+Each loops every four beats (16 quarter-beat frames), uses the selected sequence
+color, and supports the existing brightness and accent controls. These are
+brightness animations, not physical lasers. Preview at a comfortable brightness;
+beat-synchronized lighting can still be uncomfortable for photosensitive viewers.
+
+Run their timeline tests:
+
+```bash
+node --test src/lib/sequences/rave.test.ts
+```
+
 The 2D map and optional 3D preview consume these timelines. The hub playback loop is currently
 commented out, so running the hub does not animate physical lights.
 

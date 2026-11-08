@@ -1,4 +1,4 @@
-import { COUCH, DANCE, IPS, KITCHEN, OUTLINE, RADIAL } from "../constants.ts";
+import { COUCH, DANCE, IPS, KITCHEN, OUTLINE, RADIAL, ROWS_X } from "../constants.ts";
 import {
   waveWindowDoor,
   waveDoorWindow,
@@ -13,6 +13,12 @@ let cachedIPs2: number[] = [];
 let cachedIPs3: number[] = [];
 let cachedIPs4: number[] = [];
 
+const trailDimming = (head: number, position: number, tailLength: number) => {
+  const distance = (head - position + OUTLINE.length) % OUTLINE.length;
+  // Fade in ahead of the fractional head and fade out behind it.
+  return Math.min(1, distance / tailLength, OUTLINE.length - distance);
+};
+
 const circleTimeline = (streakCount: 1 | 2, direction: 1 | -1 = 1) => {
   const ticks = 16;
   const tailLength = 4;
@@ -26,16 +32,9 @@ const circleTimeline = (streakCount: 1 | 2, direction: 1 | -1 = 1) => {
       ...OUTLINE.map((index, position) => ({
         ips: [IPS[index]],
         dimming: Math.min(
-          ...heads.map((head) => {
-            const distance =
-              (head - direction * position + OUTLINE.length) % OUTLINE.length;
-            // Fade in ahead of the fractional head and fade out behind it.
-            return Math.min(
-              1,
-              distance / tailLength,
-              OUTLINE.length - distance,
-            );
-          }),
+          ...heads.map((head) =>
+            trailDimming(head, direction * position, tailLength),
+          ),
         ),
       })),
     ];
@@ -210,6 +209,67 @@ export const sequences: {
     title: "2 Circle Reverse",
     timeline: () => circleTimeline(2, -1),
   },
+  laserBounce: {
+    title: "Laser Bounce",
+    timeline: () =>
+      Array.from({ length: 16 }, (_, tick) => {
+        const head = (1 - Math.abs(tick / 8 - 1)) * (ROWS_X.length - 1);
+        return [
+          { dimming: 1 },
+          ...ROWS_X.map((row, position) => ({
+            ips: row.map((index) => IPS[index]),
+            dimming: Math.min(1, Math.abs(position - head)),
+          })),
+        ];
+      }),
+  },
+  radialRipple: {
+    title: "Radial Ripple",
+    timeline: () =>
+      Array.from({ length: 16 }, (_, tick) => [
+        { dimming: 1 },
+        ...RADIAL.map((ring, position) => ({
+          ips: [...new Set(ring)].map((index) => IPS[index]),
+          dimming: (1 - Math.cos((tick / 16 - position / RADIAL.length) * 2 * Math.PI)) / 2,
+        })),
+      ]),
+  },
+  zoneCrossfade: {
+    title: "Zone Crossfade",
+    timeline: () => {
+      const zones = [COUCH, KITCHEN, DANCE];
+      return Array.from({ length: 16 }, (_, tick) => {
+        const head = tick * zones.length / 16;
+        const current = Math.floor(head);
+        const blend = head - current;
+        return [
+          { dimming: 1 },
+          { ips: zones[current].map((index) => IPS[index]), dimming: blend },
+          {
+            ips: zones[(current + 1) % zones.length].map((index) => IPS[index]),
+            dimming: 1 - blend,
+          },
+        ];
+      });
+    },
+  },
+  orbitCollision: {
+    title: "Orbit Collision",
+    timeline: () =>
+      Array.from({ length: 16 }, (_, tick) => {
+        const head = tick / 16 * OUTLINE.length;
+        return [
+          { dimming: 1 },
+          ...OUTLINE.map((index, position) => ({
+            ips: [IPS[index]],
+            dimming: Math.min(
+              trailDimming(head, position, 4),
+              trailDimming(head, -position, 4),
+            ),
+          })),
+        ];
+      }),
+  },
 };
 
 export const sequenceOrder = [
@@ -226,4 +286,8 @@ export const sequenceOrder = [
   "circle1Reverse",
   "circle2",
   "circle2Reverse",
+  "laserBounce",
+  "radialRipple",
+  "zoneCrossfade",
+  "orbitCollision",
 ];
