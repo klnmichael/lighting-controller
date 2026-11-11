@@ -20,6 +20,24 @@ yarn dev
 yarn hub
 ```
 
+The hub reuses one UDP socket for WiZ commands. Each light has at most one send
+in flight and one pending update; under backpressure, newer values replace stale
+pending frames rather than building an animation backlog. A slow send to one
+light does not block the others. Stopping
+playback discards pending updates; commands already handed to UDP cannot be recalled.
+Send/socket errors are logged, and shutdown closes the socket.
+
+A completed send means the local UDP stack accepted the command, not that the
+light acknowledged or applied it. Packet loss, Wi-Fi congestion, and bulb firmware
+can still cause delays. Repeated timeline commands are intentionally retained
+during normal playback rather than deduplicated, so a lost packet can be refreshed.
+
+Run the sender's backpressure, error, and socket-lifecycle regression tests:
+
+```bash
+node --test hub/wiz-sender.test.ts
+```
+
 ## Sequence timelines
 
 Sequences are defined in `src/lib/sequences/index.ts`. Each outer timeline
@@ -84,8 +102,8 @@ Run their timeline tests:
 node --test src/lib/sequences/rave.test.ts
 ```
 
-The 2D map and optional 3D preview consume these timelines. The hub playback loop is currently
-commented out, so running the hub does not animate physical lights.
+The 2D map, optional 3D preview, and hub consume these timelines. Selecting a
+sequence starts the hub playback loop and sends commands to the physical lights.
 
 Run the timeline tests with Node.js supporting native TypeScript:
 

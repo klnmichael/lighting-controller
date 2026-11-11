@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import ip from "ip";
-import dgram from "dgram";
+import { createWizSender } from "./wiz-sender.ts";
 import type { Color, WizLight } from "../src/types/global.ts";
 import {
   ACCENT_COLORS,
@@ -13,6 +13,7 @@ import { sequenceOrder, sequences } from "../src/lib/sequences/index.ts";
 import { accentOrder, accents } from "../src/lib/accents.ts";
 
 const app = express();
+const wizSender = createWizSender();
 
 app.use(cors());
 app.use(express.json());
@@ -82,38 +83,6 @@ const buildParams = (config: WizLight): WizLight => {
   }
 
   return params;
-};
-
-const updateWizLights = async (updates: { ip: number; config: WizLight }[]) => {
-  if (!updates.length) return;
-
-  const client = dgram.createSocket("udp4");
-
-  await Promise.all(
-    updates.map(({ ip, config }) => {
-      const params = buildParams(config);
-
-      const buffer = Buffer.from(
-        JSON.stringify({
-          method: "setPilot",
-          // env: "pro",
-          params,
-        }),
-      );
-
-      return new Promise<void>((resolve) => {
-        client.send(buffer, 0, buffer.length, 38899, `192.168.1.${ip}`, () => {
-          resolve();
-        });
-      });
-    }),
-  );
-
-  client.close();
-};
-
-const updateWizLight = async (ip: number, config: WizLight) => {
-  await updateWizLights([{ ip, config }]);
 };
 
 const loop = () => {
@@ -216,12 +185,9 @@ const loop = () => {
       });
     });
   }
-  updateWizLights(
-    Object.entries(lightMap).map(([ip, params]) => ({
-      ip: parseInt(ip),
-      config: params as any,
-    })),
-  );
+  for (const [ip, config] of Object.entries(lightMap)) {
+    wizSender.update(Number(ip), buildParams(config));
+  }
 };
 
 const startLoop = () => {
@@ -238,6 +204,7 @@ const stopLoop = () => {
     clearInterval(loopInterval);
     loopInterval = undefined;
   }
+  wizSender.clearPending();
 };
 
 app.get("/settings", async (_, res) => {
@@ -320,6 +287,20 @@ app.post("/dimming", async (req, res) => {
 });
 
 const PORT = process.env.HUB_PORT;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Light hub running on http://${ip.address()}:${PORT}`);
 });
+
+server.on("close", () => {
+  stopLoop();
+  wizSender.close();
+});
+
+const shutdown = () => {
+  stopLoop();
+  wizSender.close();
+  server.close();
+};
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
