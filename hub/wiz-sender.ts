@@ -34,7 +34,7 @@ export const createWizSender = (
 
     const complete = (error: unknown) => {
       inFlight.delete(ip);
-      if (error) console.error(`WiZ send failed for 192.168.50.${ip}:`, error);
+      // if (error) console.error(`WiZ send failed for 192.168.50.${ip}:`, error);
       flush(ip);
     };
 

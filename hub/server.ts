@@ -58,8 +58,9 @@ const mulberry32 = (seed: number) => {
   };
 };
 
-const getSeededItem = (array: any[], seed: number) => {
-  const rng = mulberry32(seed);
+const getSeededItem = (array: any[]) => {
+  seedLoop += 1;
+  const rng = mulberry32(seedLoop);
   const index = Math.floor(rng() * array.length);
   return array[index];
 };
@@ -102,8 +103,6 @@ const buildParams = (config: WizLight): WizLight => {
 };
 
 const loop = () => {
-  seedLoop += 1;
-  const seed = seedLoop;
   const time = Date.now();
   const beat = ((time - cueTimestamp) / (60000 / bpm)) % 16;
   const beatFloor = Math.floor(beat);
@@ -136,18 +135,17 @@ const loop = () => {
       const availableSequences = sequenceOrder.filter(
         (sequence) => sequence !== runningSequence,
       );
-      runningSequence = getSeededItem(availableSequences, seed);
+      runningSequence = getSeededItem(availableSequences);
     }
-    if (activeAccent === "random")
-      runningAccent = getSeededItem(accentOrder, seed);
+    if (activeAccent === "random") runningAccent = getSeededItem(accentOrder);
   }
 
   if (!(currentBeat % 2) && currentTick === 0) {
     if (sequenceColorMode === COLOR_MODES[0]) {
-      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
+      sequenceColor = getSeededItem(ACTIVE_COLORS);
     }
     if (accentColorMode === COLOR_MODES[0]) {
-      accentColor = getSeededItem(ACCENT_COLORS, seed);
+      accentColor = getSeededItem(ACCENT_COLORS);
     }
   }
 
@@ -163,7 +161,7 @@ const loop = () => {
     sequenceTimeline[(currentBeat % sequenceTimelineBeats) * 4 + currentTick];
   if (sequenceTimelineData) {
     if (sequenceColorMode === COLOR_MODES[1] && !(currentTick % 2)) {
-      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
+      sequenceColor = getSeededItem(ACTIVE_COLORS);
     }
     sequenceTimelineData.forEach((data: any) => {
       [...(data.ips || IPS)].forEach((ip) => {
@@ -203,6 +201,7 @@ const loop = () => {
 
 const startLoop = () => {
   if (!loopInterval) {
+    seedLoop = 0;
     currentBeat = -1;
     currentTick = -1;
     loop();

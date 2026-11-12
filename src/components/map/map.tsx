@@ -91,8 +91,9 @@ const Map = ({
     };
   };
 
-  const getSeededItem = (array: any[], seed: number) => {
-    const rng = mulberry32(seed);
+  const getSeededItem = (array: any[]) => {
+    seedLoopRef.current += 1;
+    const rng = mulberry32(seedLoopRef.current);
     const index = Math.floor(rng() * array.length);
     return array[index];
   };
@@ -114,8 +115,6 @@ const Map = ({
   };
 
   const loop = () => {
-    seedLoopRef.current += 1;
-    const seed = seedLoopRef.current;
     const time = Date.now();
     const beat =
       ((time - cueTimestampRef.current) / (60000 / bpmRef.current)) % 16;
@@ -154,18 +153,18 @@ const Map = ({
         const availableSequences = sequenceOrder.filter(
           (sequence) => sequence !== runningSequence.current,
         );
-        runningSequence.current = getSeededItem(availableSequences, seed);
+        runningSequence.current = getSeededItem(availableSequences);
       }
       if (activeAccent.current === "random")
-        runningAccent.current = getSeededItem(accentOrder, seed);
+        runningAccent.current = getSeededItem(accentOrder);
     }
 
     if (!(currentBeat.current % 2) && currentTick.current === 0) {
       if (sequenceColorModeRef.current === COLOR_MODES[0]) {
-        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
+        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS);
       }
       if (accentColorModeRef.current === COLOR_MODES[0]) {
-        accentColorRef.current = getSeededItem(ACCENT_COLORS, seed * 3);
+        accentColorRef.current = getSeededItem(ACCENT_COLORS);
       }
     }
 
@@ -186,7 +185,7 @@ const Map = ({
         sequenceColorModeRef.current === COLOR_MODES[1] &&
         !(currentTick.current % 2)
       ) {
-        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
+        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS);
       }
       sequenceTimelineData.forEach((data: any) => {
         [...(data.ips || IPS)].forEach((ip) => {
@@ -230,6 +229,7 @@ const Map = ({
 
   const startLoop = () => {
     if (!loopInterval.current) {
+      seedLoopRef.current = 0;
       currentBeat.current = -1;
       currentTick.current = -1;
       loop();
