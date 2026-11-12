@@ -11,6 +11,21 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Lighting Controller",
   description: "",
+  robots: {
+    index: true,
+    follow: true,
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "Lighting Controller",
+    images: [
+      {
+        url: "/share.png",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
