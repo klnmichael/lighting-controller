@@ -35,10 +35,12 @@ export default function RoomScene({
   ref,
   lights,
   status,
+  embedded = false,
 }: {
   ref?: Ref<RoomSceneHandle>;
   lights: RefObject<PreviewLight[]>;
   status: string;
+  embedded?: boolean;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const setView = useRef<(top: boolean) => void>(() => {});
@@ -65,7 +67,7 @@ export default function RoomScene({
       // WebGL availability is only known after initializing the external renderer.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(
-        "The 3D preview requires WebGL. Enable hardware acceleration and reload. Lighting controls remain available in the main window.",
+        "The 3D preview requires WebGL. Enable hardware acceleration and reload.",
       );
       return;
     }
@@ -89,9 +91,7 @@ export default function RoomScene({
         (BLUEPRINT_DEPTH * BLUEPRINT_SCALE + CEILING_HEIGHT) /
         (2 * Math.tan(halfFov) * Math.min(camera.aspect, 1));
       controls.target.set(0, CEILING_HEIGHT / 2, 0);
-      const direction = top
-        ? new THREE.Vector3(0, 1, 0.001)
-        : new THREE.Vector3(0.8, 1.2, 1.5).normalize();
+      const direction = new THREE.Vector3(0, 1, 0.001);
       camera.position.copy(controls.target).addScaledVector(direction, fit);
       controls.maxDistance = Math.max(35, fit * 2);
       controls.update();
@@ -292,7 +292,7 @@ export default function RoomScene({
       animationFrame = 0;
       console.error("The 3D preview lost its graphics context.");
       setError(
-        "The 3D preview lost its graphics context. Reload to restore it. Lighting controls remain available in the main window.",
+        "The 3D preview lost its graphics context. Reload to restore it.",
       );
     };
     renderer.domElement.addEventListener("webglcontextlost", onContextLost);
@@ -427,8 +427,16 @@ export default function RoomScene({
   }, [lights]);
 
   return (
-    <section className={styles.container} aria-label="Room lighting preview">
+    <section
+      className={`${styles.container} ${embedded ? styles.embedded : ""}`}
+      aria-label="Room lighting preview"
+    >
       <div className={styles.viewport} ref={viewport} />
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
     </section>
   );
 }

@@ -18,11 +18,8 @@ import {
 import { sequenceOrder, sequences } from "@/lib/sequences";
 import { accentOrder, accents } from "@/lib/accents";
 import { LIGHT_POSITIONS, ROOM_OUTLINE } from "@/lib/room-layout";
-import {
-  createPreviewLights,
-  isPreviewMessage,
-  type PreviewMessage,
-} from "@/lib/preview";
+import { createPreviewLights } from "@/lib/preview";
+import RoomScene, { type RoomSceneHandle } from "./room-scene";
 import styles from "./map.module.scss";
 
 export interface MapHandle {
@@ -56,6 +53,7 @@ const Map = ({
   accentColor,
   accentDimming,
 }: MapProps) => {
+  const seedRef = useRef(0);
   const cueTimestampRef = useRef(cueTimestamp);
   const bpmRef = useRef(bpm);
 
@@ -89,69 +87,53 @@ const Map = ({
 
   const lights = useRef(createPreviewLights());
   const lightRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const previewWindow = useRef<Window | null>(null);
-  const [popupError, setPopupError] = useState("");
+  const scene = useRef<RoomSceneHandle>(null);
+  const preview = useRef<HTMLElement>(null);
+  const previewTrigger = useRef<HTMLElement | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  const sendPreview = () => {
-    if (previewWindow.current && !previewWindow.current.closed) {
-      previewWindow.current.postMessage(
-        {
-          type: "preview:state",
-          lights: lights.current,
-        } satisfies PreviewMessage,
-        window.location.origin,
-      );
+  const mulberry32 = (seed: number) => {
+    return function () {
+      let t = (seed += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
+  const getSeededItem = (array: any[], seed: number) => {
+    const rng = mulberry32(seed);
+    const index = Math.floor(rng() * array.length);
+    return array[index];
+  };
+
+  const closePreview = () => {
+    if (preview.current?.contains(document.activeElement)) {
+      previewTrigger.current?.focus();
     }
+    setPreviewOpen(false);
   };
 
   useImperativeHandle(ref, () => ({
     openPreview() {
-      if (!previewWindow.current || previewWindow.current.closed) {
-        previewWindow.current = window.open(
-          "/3d",
-          "lighting-controller-3d",
-          "popup,width=1100,height=800,resizable=yes,scrollbars=yes",
-        );
+      if (!previewOpen) {
+        previewTrigger.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        setPreviewOpen(true);
       }
-      if (!previewWindow.current) {
-        setPopupError(
-          "The 3D preview popup was blocked. Allow popups for this site and try again.",
-        );
-        return;
-      }
-      setPopupError("");
-      previewWindow.current.focus();
-      sendPreview();
     },
   }));
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent<unknown>) => {
-      if (
-        event.origin === window.location.origin &&
-        event.source === previewWindow.current &&
-        isPreviewMessage(event.data) &&
-        event.data.type === "preview:request"
-      ) {
-        sendPreview();
-      }
+    if (!previewOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closePreview();
     };
-    const disconnect = () => {
-      if (previewWindow.current && !previewWindow.current.closed) {
-        previewWindow.current.postMessage(
-          { type: "preview:disconnected" } satisfies PreviewMessage,
-          window.location.origin,
-        );
-      }
-    };
-    window.addEventListener("message", onMessage);
-    window.addEventListener("pagehide", disconnect);
-    return () => {
-      disconnect();
-      window.removeEventListener("message", onMessage);
-      window.removeEventListener("pagehide", disconnect);
-    };
-  }, []);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [previewOpen]);
 
   const updateLight = (
     ip: number,
@@ -170,6 +152,7 @@ const Map = ({
   };
 
   const loop = () => {
+    seedRef.current += 1;
     const time = Date.now();
     const beat =
       ((time - cueTimestampRef.current) / (60000 / bpmRef.current)) % 16;
@@ -208,24 +191,24 @@ const Map = ({
         const availableSequences = sequenceOrder.filter(
           (sequence) => sequence !== runningSequence.current,
         );
-        runningSequence.current =
-          availableSequences[
-            Math.floor(Math.random() * availableSequences.length)
-          ];
+        runningSequence.current = getSeededItem(
+          availableSequences,
+          seedRef.current,
+        );
       }
       if (activeAccent.current === "random")
-        runningAccent.current =
-          accentOrder[Math.floor(Math.random() * accentOrder.length)];
+        runningAccent.current = getSeededItem(accentOrder, seedRef.current);
     }
 
     if (!(currentBeat.current % 2) && currentTick.current === 0) {
       if (sequenceColorModeRef.current === COLOR_MODES[0]) {
-        sequenceColorRef.current =
-          ACTIVE_COLORS[Math.floor(Math.random() * ACTIVE_COLORS.length)];
+        sequenceColorRef.current = getSeededItem(
+          ACTIVE_COLORS,
+          seedRef.current,
+        );
       }
       if (accentColorModeRef.current === COLOR_MODES[0]) {
-        accentColorRef.current =
-          ACCENT_COLORS[Math.floor(Math.random() * ACCENT_COLORS.length)];
+        accentColorRef.current = getSeededItem(ACCENT_COLORS, seedRef.current);
       }
     }
 
@@ -246,8 +229,10 @@ const Map = ({
         sequenceColorModeRef.current === COLOR_MODES[1] &&
         !(currentTick.current % 2)
       ) {
-        sequenceColorRef.current =
-          ACTIVE_COLORS[Math.floor(Math.random() * ACTIVE_COLORS.length)];
+        sequenceColorRef.current = getSeededItem(
+          ACTIVE_COLORS,
+          seedRef.current,
+        );
       }
       sequenceTimelineData.forEach((data: any) => {
         [...(data.ips || IPS)].forEach((ip) => {
@@ -286,7 +271,7 @@ const Map = ({
     for (const [ip, params] of Object.entries(lightMap)) {
       updateLight(parseInt(ip), params);
     }
-    sendPreview();
+    scene.current?.invalidate();
   };
 
   const startLoop = () => {
@@ -389,10 +374,28 @@ const Map = ({
           ))}
         </ol>
       </div>
-      {popupError && (
-        <p className={styles.error} role="alert">
-          {popupError}
-        </p>
+      {previewOpen && (
+        <section
+          ref={preview}
+          className={styles.preview}
+          role="dialog"
+          aria-labelledby="preview-title"
+        >
+          <button
+            type="button"
+            className={styles.preview__close}
+            onClick={closePreview}
+            autoFocus
+          >
+            CLOSE
+          </button>
+          <RoomScene
+            ref={scene}
+            lights={lights}
+            status="Live preview"
+            embedded
+          />
+        </section>
       )}
     </section>
   );

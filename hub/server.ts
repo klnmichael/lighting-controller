@@ -19,6 +19,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+let seed = 0;
 let cueTimestamp = 0;
 let bpm = 120;
 
@@ -47,6 +48,21 @@ let currentBeat = -1;
 let currentTick = -1;
 
 let loopInterval: ReturnType<typeof setInterval> | undefined = undefined;
+
+const mulberry32 = (seed: number) => {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const getSeededItem = (array: any[], seed: number) => {
+  const rng = mulberry32(seed);
+  const index = Math.floor(rng() * array.length);
+  return array[index];
+};
 
 const buildParams = (config: WizLight): WizLight => {
   const params: WizLight = {
@@ -118,24 +134,18 @@ const loop = () => {
       const availableSequences = sequenceOrder.filter(
         (sequence) => sequence !== runningSequence,
       );
-      runningSequence =
-        availableSequences[
-          Math.floor(Math.random() * availableSequences.length)
-        ];
+      runningSequence = getSeededItem(availableSequences, seed);
     }
     if (activeAccent === "random")
-      runningAccent =
-        accentOrder[Math.floor(Math.random() * accentOrder.length)];
+      runningAccent = getSeededItem(accentOrder, seed);
   }
 
   if (!(currentBeat % 2) && currentTick === 0) {
     if (sequenceColorMode === COLOR_MODES[0]) {
-      sequenceColor =
-        ACTIVE_COLORS[Math.floor(Math.random() * ACTIVE_COLORS.length)];
+      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
     }
     if (accentColorMode === COLOR_MODES[0]) {
-      accentColor =
-        ACCENT_COLORS[Math.floor(Math.random() * ACCENT_COLORS.length)];
+      accentColor = getSeededItem(ACCENT_COLORS, seed);
     }
   }
 
@@ -151,8 +161,7 @@ const loop = () => {
     sequenceTimeline[(currentBeat % sequenceTimelineBeats) * 4 + currentTick];
   if (sequenceTimelineData) {
     if (sequenceColorMode === COLOR_MODES[1] && !(currentTick % 2)) {
-      sequenceColor =
-        ACTIVE_COLORS[Math.floor(Math.random() * ACTIVE_COLORS.length)];
+      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
     }
     sequenceTimelineData.forEach((data: any) => {
       [...(data.ips || IPS)].forEach((ip) => {

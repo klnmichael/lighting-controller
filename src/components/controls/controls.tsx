@@ -205,7 +205,9 @@ const Controls = ({
           </PressButton>
           <PressButton onPress={onBpmTap}>TAP</PressButton>
           <PressButton onPress={onBpmListen}>LISTEN</PressButton>
-          <PressButton onPress={onOpenPreview}>3D</PressButton>
+          <button type="button" onClick={onOpenPreview}>
+            3D
+          </button>
         </div>
       </div>
       <div className={styles.pad}>

@@ -7,6 +7,18 @@
   min-height: 36rem;
 }
 
+.embedded {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+.error {
+  margin: 0;
+  padding: 1rem;
+  color: #ffb9b9;
+}
+
 .viewport {
   position: relative;
   width: 100%;

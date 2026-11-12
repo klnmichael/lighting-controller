@@ -9,6 +9,7 @@ import Settings from "@/components/settings";
 
 export default function Home() {
   const mapRef = useRef<MapHandle>(null);
+  const [seed, setSeed] = useState(0);
   const [cueTimestamp, setCueTimestamp] = useState(0);
   const [bpm, setBpm] = useState(120);
   const [sequence, setSequence] = useState("");
