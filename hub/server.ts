@@ -58,9 +58,8 @@ const mulberry32 = (seed: number) => {
   };
 };
 
-const getSeededItem = (array: any[]) => {
-  seedLoop += 1;
-  const rng = mulberry32(seedLoop);
+const getSeededItem = (array: any[], seed: number) => {
+  const rng = mulberry32(seed);
   const index = Math.floor(rng() * array.length);
   return array[index];
 };
@@ -104,6 +103,7 @@ const buildParams = (config: WizLight): WizLight => {
 
 const loop = () => {
   const time = Date.now();
+  const seed = (time - cueTimestamp) / (60000 / bpm);
   const beat = ((time - cueTimestamp) / (60000 / bpm)) % 16;
   const beatFloor = Math.floor(beat);
   const tick = (beat - beatFloor) * 4;
@@ -135,17 +135,18 @@ const loop = () => {
       const availableSequences = sequenceOrder.filter(
         (sequence) => sequence !== runningSequence,
       );
-      runningSequence = getSeededItem(availableSequences);
+      runningSequence = getSeededItem(availableSequences, seed);
     }
-    if (activeAccent === "random") runningAccent = getSeededItem(accentOrder);
+    if (activeAccent === "random")
+      runningAccent = getSeededItem(accentOrder, seed);
   }
 
   if (!(currentBeat % 2) && currentTick === 0) {
     if (sequenceColorMode === COLOR_MODES[0]) {
-      sequenceColor = getSeededItem(ACTIVE_COLORS);
+      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
     }
     if (accentColorMode === COLOR_MODES[0]) {
-      accentColor = getSeededItem(ACCENT_COLORS);
+      accentColor = getSeededItem(ACCENT_COLORS, seed * 3);
     }
   }
 
@@ -161,7 +162,7 @@ const loop = () => {
     sequenceTimeline[(currentBeat % sequenceTimelineBeats) * 4 + currentTick];
   if (sequenceTimelineData) {
     if (sequenceColorMode === COLOR_MODES[1] && !(currentTick % 2)) {
-      sequenceColor = getSeededItem(ACTIVE_COLORS);
+      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
     }
     sequenceTimelineData.forEach((data: any) => {
       [...(data.ips || IPS)].forEach((ip) => {
@@ -216,6 +217,12 @@ const stopLoop = () => {
   }
   wizSender.clearPending();
 };
+
+app.get("/", async (_, res) => {
+  res.status(200).json({
+    hubUrl: `http://${ip.address()}:${process.env.HUB_PORT}`,
+  });
+});
 
 app.get("/settings", async (_, res) => {
   res.status(200).json({
@@ -296,9 +303,8 @@ app.post("/dimming", async (req, res) => {
   res.status(200).json({});
 });
 
-const PORT = process.env.HUB_PORT;
-const server = app.listen(PORT, () => {
-  console.log(`Light hub running on http://${ip.address()}:${PORT}`);
+const server = app.listen(process.env.HUB_PORT, () => {
+  console.log(`http://${ip.address()}:${process.env.HUB_PORT}`);
 });
 
 server.on("close", () => {

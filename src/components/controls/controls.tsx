@@ -13,6 +13,7 @@ import {
 } from "@/lib/constants";
 import Count from "../count";
 import styles from "./controls.module.scss";
+import packageJson from "../../../package.json";
 
 const PressButton = ({
   onPress,
@@ -187,6 +188,7 @@ const Controls = ({
           <PressButton onPress={() => onCue(Date.now())}>CUE</PressButton>
         </div>
         <label className={styles.hubUrl}>
+          v.{packageJson.version}
           <input
             type="url"
             value={hubUrl}

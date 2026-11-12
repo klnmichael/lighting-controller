@@ -31,7 +31,6 @@ export default function Home() {
     lights.current = nextLights;
     sceneRef.current?.invalidate();
   }, []);
-  const [seed, setSeed] = useState(0);
   const [cueTimestamp, setCueTimestamp] = useState(0);
   const [bpm, setBpm] = useState(120);
   const [sequence, setSequence] = useState("");
@@ -206,7 +205,6 @@ export default function Home() {
   return (
     <>
       <Map
-        onLightsChange={onLightsChange}
         cueTimestamp={cueTimestamp}
         bpm={bpm}
         sequence={sequence}
@@ -217,6 +215,7 @@ export default function Home() {
         accentColorMode={accentColorMode}
         accentColor={accentColor}
         accentDimming={accentDimming}
+        onLightsChange={onLightsChange}
       />
       <Controls
         hubUrl={hubUrl}

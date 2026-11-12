@@ -16,7 +16,6 @@ import { createLights, type LightState } from "@/lib/lights";
 import styles from "./map.module.scss";
 
 export interface MapProps {
-  onLightsChange: (lights: LightState[]) => void;
   cueTimestamp: number;
   bpm: number;
   sequence?: string;
@@ -27,10 +26,10 @@ export interface MapProps {
   accentColorMode: string;
   accentColor: Color;
   accentDimming: number;
+  onLightsChange: (lights: LightState[]) => void;
 }
 
 const Map = ({
-  onLightsChange,
   cueTimestamp,
   bpm,
   sequence,
@@ -41,6 +40,7 @@ const Map = ({
   accentColorMode,
   accentColor,
   accentDimming,
+  onLightsChange,
 }: MapProps) => {
   const seedLoopRef = useRef(0);
   const cueTimestampRef = useRef(cueTimestamp);
@@ -91,9 +91,8 @@ const Map = ({
     };
   };
 
-  const getSeededItem = (array: any[]) => {
-    seedLoopRef.current += 1;
-    const rng = mulberry32(seedLoopRef.current);
+  const getSeededItem = (array: any[], seed: number) => {
+    const rng = mulberry32(seed);
     const index = Math.floor(rng() * array.length);
     return array[index];
   };
@@ -116,6 +115,7 @@ const Map = ({
 
   const loop = () => {
     const time = Date.now();
+    const seed = (time - cueTimestampRef.current) / (60000 / bpmRef.current);
     const beat =
       ((time - cueTimestampRef.current) / (60000 / bpmRef.current)) % 16;
     const beatFloor = Math.floor(beat);
@@ -153,18 +153,18 @@ const Map = ({
         const availableSequences = sequenceOrder.filter(
           (sequence) => sequence !== runningSequence.current,
         );
-        runningSequence.current = getSeededItem(availableSequences);
+        runningSequence.current = getSeededItem(availableSequences, seed);
       }
       if (activeAccent.current === "random")
-        runningAccent.current = getSeededItem(accentOrder);
+        runningAccent.current = getSeededItem(accentOrder, seed);
     }
 
     if (!(currentBeat.current % 2) && currentTick.current === 0) {
       if (sequenceColorModeRef.current === COLOR_MODES[0]) {
-        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS);
+        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
       }
       if (accentColorModeRef.current === COLOR_MODES[0]) {
-        accentColorRef.current = getSeededItem(ACCENT_COLORS);
+        accentColorRef.current = getSeededItem(ACCENT_COLORS, seed * 3);
       }
     }
 
@@ -185,7 +185,7 @@ const Map = ({
         sequenceColorModeRef.current === COLOR_MODES[1] &&
         !(currentTick.current % 2)
       ) {
-        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS);
+        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
       }
       sequenceTimelineData.forEach((data: any) => {
         [...(data.ips || IPS)].forEach((ip) => {
