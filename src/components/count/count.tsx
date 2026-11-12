@@ -76,7 +76,9 @@ const Count = ({ cueTimestamp, bpm, sequence }: MapProps) => {
 
   return (
     <section className={styles.container}>
-      <div ref={outputRef} className={styles.output}></div>
+      <div ref={outputRef} className={styles.output}>
+        <span>1</span>/<span>1</span>
+      </div>
     </section>
   );
 };
