@@ -78,6 +78,7 @@ const Slider = ({ value, onChange }: SliderProps) => {
 };
 
 export interface MapProps {
+  hubUrl: string;
   cueTimestamp: number;
   bpm: number;
   sequence?: string;
@@ -88,6 +89,7 @@ export interface MapProps {
   accentColorMode?: string;
   accentColor?: Color;
   accentDimming: number;
+  onHubUrlChange: (hubUrl: string) => void;
   onToggle: () => void;
   onOpenPreview: () => void;
   onCue: (timestamp: number) => void;
@@ -103,6 +105,7 @@ export interface MapProps {
 }
 
 const Controls = ({
+  hubUrl,
   cueTimestamp,
   bpm,
   sequence,
@@ -113,6 +116,7 @@ const Controls = ({
   accentColorMode,
   accentColor,
   accentDimming,
+  onHubUrlChange,
   onToggle,
   onOpenPreview,
   onCue,
@@ -182,6 +186,14 @@ const Controls = ({
           <PressButton onPress={onToggle}>I/O</PressButton>
           <PressButton onPress={() => onCue(Date.now())}>CUE</PressButton>
         </div>
+        <label className={styles.hubUrl}>
+          <input
+            type="url"
+            value={hubUrl}
+            placeholder="http://localhost:3000"
+            onChange={(e) => onHubUrlChange(e.target.value)}
+          />
+        </label>
         <div className={styles.group}>
           <Count cueTimestamp={cueTimestamp} bpm={bpm} sequence={sequence} />
           <PressButton

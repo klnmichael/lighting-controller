@@ -34,11 +34,7 @@ export const createWizSender = (
 
     const complete = (error: unknown) => {
       inFlight.delete(ip);
-      if (error)
-        console.error(
-          `WiZ send failed for ${process.env.NEXT_PUBLIC_LOCAL_IP}.${ip}:`,
-          error,
-        );
+      if (error) console.error(`WiZ send failed for 192.168.50.${ip}:`, error);
       flush(ip);
     };
 
@@ -46,7 +42,7 @@ export const createWizSender = (
       socket.send(
         Buffer.from(JSON.stringify({ method: "setPilot", params })),
         38899,
-        `${process.env.NEXT_PUBLIC_LOCAL_IP}.${ip}`,
+        `192.168.50.${ip}`,
         complete,
       );
     } catch (error) {

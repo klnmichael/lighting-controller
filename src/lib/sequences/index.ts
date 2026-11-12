@@ -1,9 +1,18 @@
-import { COUCH, DANCE, IPS, KITCHEN, OUTLINE, RADIAL, ROWS_X } from "../constants.ts";
+import {
+  COUCH,
+  DANCE,
+  IPS,
+  KITCHEN,
+  OUTLINE,
+  RADIAL,
+  ROWS_X,
+} from "../constants.ts";
 import {
   waveWindowDoor,
   waveDoorWindow,
   waveAlternating,
-  waveRadiate,
+  waveRadiateOut,
+  waveRadiateIn,
   waveWallKitchen,
   waveKitchenWall,
 } from "./wave.ts";
@@ -72,7 +81,8 @@ export const sequences: {
   waveWindowDoor,
   waveDoorWindow,
   waveAlternating,
-  waveRadiate,
+  waveRadiateOut,
+  waveRadiateIn,
   waveWallKitchen,
   waveKitchenWall,
   pulsate: {
@@ -209,8 +219,8 @@ export const sequences: {
     title: "2 Circle Reverse",
     timeline: () => circleTimeline(2, -1),
   },
-  laserBounce: {
-    title: "Laser Bounce",
+  waveBounce: {
+    title: "Wave Bounce",
     timeline: () =>
       Array.from({ length: 16 }, (_, tick) => {
         const head = (1 - Math.abs(tick / 8 - 1)) * (ROWS_X.length - 1);
@@ -230,7 +240,10 @@ export const sequences: {
         { dimming: 1 },
         ...RADIAL.map((ring, position) => ({
           ips: [...new Set(ring)].map((index) => IPS[index]),
-          dimming: (1 - Math.cos((tick / 16 - position / RADIAL.length) * 2 * Math.PI)) / 2,
+          dimming:
+            (1 -
+              Math.cos((tick / 16 - position / RADIAL.length) * 2 * Math.PI)) /
+            2,
         })),
       ]),
   },
@@ -239,7 +252,7 @@ export const sequences: {
     timeline: () => {
       const zones = [COUCH, KITCHEN, DANCE];
       return Array.from({ length: 16 }, (_, tick) => {
-        const head = tick * zones.length / 16;
+        const head = (tick * zones.length) / 16;
         const current = Math.floor(head);
         const blend = head - current;
         return [
@@ -257,7 +270,7 @@ export const sequences: {
     title: "Orbit Collision",
     timeline: () =>
       Array.from({ length: 16 }, (_, tick) => {
-        const head = tick / 16 * OUTLINE.length;
+        const head = (tick / 16) * OUTLINE.length;
         return [
           { dimming: 1 },
           ...OUTLINE.map((index, position) => ({
@@ -275,19 +288,20 @@ export const sequences: {
 export const sequenceOrder = [
   "twinkle",
   "twinkleFast",
+  "pulsate",
+  "radialRipple",
+  "zoneCrossfade",
   "waveWindowDoor",
   "waveDoorWindow",
   "waveAlternating",
-  "waveRadiate",
+  "waveRadiateOut",
+  "waveRadiateIn",
   "waveWallKitchen",
   "waveKitchenWall",
-  "pulsate",
+  "waveBounce",
   "circle1",
   "circle1Reverse",
   "circle2",
   "circle2Reverse",
-  "laserBounce",
-  "radialRipple",
-  "zoneCrossfade",
   "orbitCollision",
 ];

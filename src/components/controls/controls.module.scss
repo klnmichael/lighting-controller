@@ -6,7 +6,6 @@
   flex-flow: column;
   z-index: 2;
   backdrop-filter: blur(1rem);
-  opacity: 0.5;
 
   button {
     aspect-ratio: 1/1;
@@ -61,6 +60,20 @@
 .group {
   display: flex;
   gap: 1.25rem;
+}
+.hubUrl {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: white;
+  font-size: 1vw;
+
+  input {
+    width: 22vw;
+    height: 3vw;
+    padding: 0 0.75rem;
+    text-align: left;
+  }
 }
 .decrease,
 .increase {

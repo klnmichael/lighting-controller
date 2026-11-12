@@ -1,14 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Color } from "@/types/global";
 import { COLOR_MODES } from "@/lib/constants";
-import Map, { type MapHandle } from "@/components/map";
+import Map from "@/components/map";
+import RoomPreview from "@/components/room-preview";
+import type { RoomSceneHandle } from "@/components/room-scene";
+import { createLights, type LightState } from "@/lib/lights";
 import Controls from "@/components/controls";
 import Settings from "@/components/settings";
 
 export default function Home() {
-  const mapRef = useRef<MapHandle>(null);
+  const lights = useRef(createLights());
+  const sceneRef = useRef<RoomSceneHandle>(null);
+  const previewTrigger = useRef<HTMLElement | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const onOpenPreview = () => {
+    if (previewOpen) return;
+    previewTrigger.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setPreviewOpen(true);
+  };
+  const onClosePreview = useCallback(() => {
+    previewTrigger.current?.focus();
+    setPreviewOpen(false);
+  }, []);
+  const onLightsChange = useCallback((nextLights: LightState[]) => {
+    lights.current = nextLights;
+    sceneRef.current?.invalidate();
+  }, []);
   const [seed, setSeed] = useState(0);
   const [cueTimestamp, setCueTimestamp] = useState(0);
   const [bpm, setBpm] = useState(120);
@@ -21,7 +43,7 @@ export default function Home() {
   const [accentColor, setAccentColor] = useState<Color>([255, 255, 255]);
   const [accentDimming, setAccentDimming] = useState(1);
 
-  const hubUrl = process.env.NEXT_PUBLIC_HUB_URL;
+  const [hubUrl, setHubUrl] = useState(process.env.NEXT_PUBLIC_HUB_URL ?? "");
 
   const fetchServerSettings = async () => {
     if (hubUrl) {
@@ -184,7 +206,7 @@ export default function Home() {
   return (
     <>
       <Map
-        ref={mapRef}
+        onLightsChange={onLightsChange}
         cueTimestamp={cueTimestamp}
         bpm={bpm}
         sequence={sequence}
@@ -197,6 +219,7 @@ export default function Home() {
         accentDimming={accentDimming}
       />
       <Controls
+        hubUrl={hubUrl}
         cueTimestamp={cueTimestamp}
         bpm={bpm}
         sequence={sequence}
@@ -207,8 +230,9 @@ export default function Home() {
         accentColorMode={accentColorMode}
         accentColor={accentColor}
         accentDimming={accentDimming}
+        onHubUrlChange={setHubUrl}
         onToggle={onToggle}
-        onOpenPreview={() => mapRef.current?.openPreview()}
+        onOpenPreview={onOpenPreview}
         onCue={onCue}
         onBpm={onBpm}
         onSequence={onSequence}
@@ -221,6 +245,9 @@ export default function Home() {
         onAccentDimming={onAccentDimming}
       />
       <Settings />
+      {previewOpen && (
+        <RoomPreview ref={sceneRef} lights={lights} onClose={onClosePreview} />
+      )}
     </>
   );
 }

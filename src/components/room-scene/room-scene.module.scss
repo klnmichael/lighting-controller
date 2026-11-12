@@ -3,13 +3,7 @@
   background: #000;
   display: flex;
   flex-direction: column;
-  height: 100svh;
-  min-height: 36rem;
-}
-
-.embedded {
   flex: 1;
-  height: auto;
   min-height: 0;
 }
 

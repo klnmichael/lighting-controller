@@ -18,13 +18,14 @@ import { IPS } from "@/lib/constants";
 import {
   BLUEPRINT_DEPTH,
   BLUEPRINT_SCALE,
+  BLUEPRINT_WIDTH,
   CEILING_HEIGHT,
   ROOM_OUTLINE,
   blueprintToWorld,
   isWallOccludingRoom,
   lightPosition,
 } from "@/lib/room-layout";
-import type { PreviewLight } from "@/lib/preview";
+import type { LightState } from "@/lib/lights";
 import styles from "./room-scene.module.scss";
 
 export interface RoomSceneHandle {
@@ -34,16 +35,11 @@ export interface RoomSceneHandle {
 export default function RoomScene({
   ref,
   lights,
-  status,
-  embedded = false,
 }: {
   ref?: Ref<RoomSceneHandle>;
-  lights: RefObject<PreviewLight[]>;
-  status: string;
-  embedded?: boolean;
+  lights: RefObject<LightState[]>;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
-  const setView = useRef<(top: boolean) => void>(() => {});
   const requestRenderRef = useRef<() => void>(() => {});
   const [error, setError] = useState("");
 
@@ -85,7 +81,7 @@ export default function RoomScene({
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    const resetView = (top: boolean) => {
+    const resetView = () => {
       const halfFov = THREE.MathUtils.degToRad(camera.fov / 2);
       const fit =
         (BLUEPRINT_DEPTH * BLUEPRINT_SCALE + CEILING_HEIGHT) /
@@ -96,12 +92,8 @@ export default function RoomScene({
       controls.maxDistance = Math.max(35, fit * 2);
       controls.update();
     };
-    setView.current = resetView;
 
     scene.add(new THREE.HemisphereLight("#ccc", "#222", 1.8));
-    const daylight = new THREE.DirectionalLight("#ffffff", 2);
-    daylight.position.set(-3, 8, 4);
-    scene.add(daylight);
 
     const outline = ROOM_OUTLINE.map(([x, y]) => blueprintToWorld(x, y));
     const shape = new THREE.Shape();
@@ -110,20 +102,35 @@ export default function RoomScene({
       else shape.lineTo(x, z);
     });
     shape.closePath();
+    const floorTexture = new THREE.TextureLoader().load(
+      "/floor-texture.jpg",
+      undefined,
+      undefined,
+      (cause) => console.error("Unable to load the floor texture.", cause),
+    );
+    floorTexture.colorSpace = THREE.SRGBColorSpace;
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(
+      2 / (BLUEPRINT_WIDTH * BLUEPRINT_SCALE),
+      2 / (BLUEPRINT_DEPTH * BLUEPRINT_SCALE),
+    );
+    floorTexture.offset.set(0.5, 0.5);
+    floorTexture.rotation = Math.PI / 2;
     const floor = new THREE.Mesh(
-      new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: false }),
-      new THREE.MeshStandardMaterial({ color: "#333", roughness: 0.9 }),
+      new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false }),
+      new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 0.9 }),
     );
     floor.rotation.x = Math.PI / 2;
     scene.add(floor);
 
     const wallMaterial = new THREE.MeshStandardMaterial({
-      color: "#bbb",
+      color: "#fff",
       side: THREE.DoubleSide,
-      roughness: 0.85,
+      roughness: 1,
     });
     const cutawayWallMaterial = new THREE.MeshStandardMaterial({
-      color: "#bbb",
+      color: "#ccc",
       transparent: true,
       opacity: 0.08,
       depthWrite: false,
@@ -132,7 +139,7 @@ export default function RoomScene({
       roughness: 0.85,
     });
     const edgeMaterial = new THREE.LineBasicMaterial({
-      color: "#bbb",
+      color: "#ccc",
       transparent: true,
       opacity: 0.65,
     });
@@ -278,10 +285,10 @@ export default function RoomScene({
       requestRender();
     };
     resize();
-    resetView(false);
+    resetView();
     const observer = new ResizeObserver(() => {
       resize();
-      resetView(false);
+      resetView();
     });
     observer.observe(host);
 
@@ -395,7 +402,6 @@ export default function RoomScene({
       observer.disconnect();
       controls.removeEventListener("change", onCameraChange);
       controls.dispose();
-      setView.current = () => {};
       renderer.domElement.removeEventListener(
         "webglcontextlost",
         onContextLost,
@@ -419,6 +425,7 @@ export default function RoomScene({
       });
       geometries.forEach((geometry) => geometry.dispose());
       materials.forEach((material) => material.dispose());
+      floorTexture.dispose();
       scene.clear();
       renderer.dispose();
       renderer.domElement.remove();
@@ -427,10 +434,7 @@ export default function RoomScene({
   }, [lights]);
 
   return (
-    <section
-      className={`${styles.container} ${embedded ? styles.embedded : ""}`}
-      aria-label="Room lighting preview"
-    >
+    <section className={styles.container} aria-label="Room lighting preview">
       <div className={styles.viewport} ref={viewport} />
       {error && (
         <p className={styles.error} role="alert">

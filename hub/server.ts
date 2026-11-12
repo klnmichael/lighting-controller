@@ -19,7 +19,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-let seed = 0;
+let seedLoop = 0;
 let cueTimestamp = 0;
 let bpm = 120;
 
@@ -102,6 +102,8 @@ const buildParams = (config: WizLight): WizLight => {
 };
 
 const loop = () => {
+  seedLoop += 1;
+  const seed = seedLoop;
   const time = Date.now();
   const beat = ((time - cueTimestamp) / (60000 / bpm)) % 16;
   const beatFloor = Math.floor(beat);

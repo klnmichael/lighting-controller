@@ -14,6 +14,9 @@ yarn install
 yarn dev
 ```
 
+The **3D** control opens a live room preview inside the main page. Use **CLOSE**
+or Escape to return to the 2D map; a separate browser popup is not required.
+
 ## Start Hub
 
 ```bash

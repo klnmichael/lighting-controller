@@ -1,13 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  useRef,
-  useEffect,
-  useImperativeHandle,
-  useState,
-  type Ref,
-} from "react";
+import { useRef, useEffect } from "react";
 import type { Color } from "@/types/global";
 import {
   ACCENT_COLORS,
@@ -18,16 +12,11 @@ import {
 import { sequenceOrder, sequences } from "@/lib/sequences";
 import { accentOrder, accents } from "@/lib/accents";
 import { LIGHT_POSITIONS, ROOM_OUTLINE } from "@/lib/room-layout";
-import { createPreviewLights } from "@/lib/preview";
-import RoomScene, { type RoomSceneHandle } from "./room-scene";
+import { createLights, type LightState } from "@/lib/lights";
 import styles from "./map.module.scss";
 
-export interface MapHandle {
-  openPreview: () => void;
-}
-
 export interface MapProps {
-  ref?: Ref<MapHandle>;
+  onLightsChange: (lights: LightState[]) => void;
   cueTimestamp: number;
   bpm: number;
   sequence?: string;
@@ -41,7 +30,7 @@ export interface MapProps {
 }
 
 const Map = ({
-  ref,
+  onLightsChange,
   cueTimestamp,
   bpm,
   sequence,
@@ -53,7 +42,7 @@ const Map = ({
   accentColor,
   accentDimming,
 }: MapProps) => {
-  const seedRef = useRef(0);
+  const seedLoopRef = useRef(0);
   const cueTimestampRef = useRef(cueTimestamp);
   const bpmRef = useRef(bpm);
 
@@ -85,12 +74,13 @@ const Map = ({
     undefined,
   );
 
-  const lights = useRef(createPreviewLights());
+  const lights = useRef(createLights());
   const lightRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const scene = useRef<RoomSceneHandle>(null);
-  const preview = useRef<HTMLElement>(null);
-  const previewTrigger = useRef<HTMLElement | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const onLightsChangeRef = useRef(onLightsChange);
+
+  useEffect(() => {
+    onLightsChangeRef.current = onLightsChange;
+  }, [onLightsChange]);
 
   const mulberry32 = (seed: number) => {
     return function () {
@@ -106,34 +96,6 @@ const Map = ({
     const index = Math.floor(rng() * array.length);
     return array[index];
   };
-
-  const closePreview = () => {
-    if (preview.current?.contains(document.activeElement)) {
-      previewTrigger.current?.focus();
-    }
-    setPreviewOpen(false);
-  };
-
-  useImperativeHandle(ref, () => ({
-    openPreview() {
-      if (!previewOpen) {
-        previewTrigger.current =
-          document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : null;
-        setPreviewOpen(true);
-      }
-    },
-  }));
-
-  useEffect(() => {
-    if (!previewOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closePreview();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [previewOpen]);
 
   const updateLight = (
     ip: number,
@@ -152,7 +114,8 @@ const Map = ({
   };
 
   const loop = () => {
-    seedRef.current += 1;
+    seedLoopRef.current += 1;
+    const seed = seedLoopRef.current;
     const time = Date.now();
     const beat =
       ((time - cueTimestampRef.current) / (60000 / bpmRef.current)) % 16;
@@ -191,24 +154,18 @@ const Map = ({
         const availableSequences = sequenceOrder.filter(
           (sequence) => sequence !== runningSequence.current,
         );
-        runningSequence.current = getSeededItem(
-          availableSequences,
-          seedRef.current,
-        );
+        runningSequence.current = getSeededItem(availableSequences, seed);
       }
       if (activeAccent.current === "random")
-        runningAccent.current = getSeededItem(accentOrder, seedRef.current);
+        runningAccent.current = getSeededItem(accentOrder, seed);
     }
 
     if (!(currentBeat.current % 2) && currentTick.current === 0) {
       if (sequenceColorModeRef.current === COLOR_MODES[0]) {
-        sequenceColorRef.current = getSeededItem(
-          ACTIVE_COLORS,
-          seedRef.current,
-        );
+        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
       }
       if (accentColorModeRef.current === COLOR_MODES[0]) {
-        accentColorRef.current = getSeededItem(ACCENT_COLORS, seedRef.current);
+        accentColorRef.current = getSeededItem(ACCENT_COLORS, seed * 3);
       }
     }
 
@@ -229,10 +186,7 @@ const Map = ({
         sequenceColorModeRef.current === COLOR_MODES[1] &&
         !(currentTick.current % 2)
       ) {
-        sequenceColorRef.current = getSeededItem(
-          ACTIVE_COLORS,
-          seedRef.current,
-        );
+        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
       }
       sequenceTimelineData.forEach((data: any) => {
         [...(data.ips || IPS)].forEach((ip) => {
@@ -271,7 +225,7 @@ const Map = ({
     for (const [ip, params] of Object.entries(lightMap)) {
       updateLight(parseInt(ip), params);
     }
-    scene.current?.invalidate();
+    onLightsChangeRef.current(lights.current);
   };
 
   const startLoop = () => {
@@ -289,6 +243,8 @@ const Map = ({
       loopInterval.current = undefined;
     }
   };
+
+  useEffect(() => () => stopLoop(), []);
 
   useEffect(() => {
     cueTimestampRef.current = cueTimestamp;
@@ -374,29 +330,6 @@ const Map = ({
           ))}
         </ol>
       </div>
-      {previewOpen && (
-        <section
-          ref={preview}
-          className={styles.preview}
-          role="dialog"
-          aria-labelledby="preview-title"
-        >
-          <button
-            type="button"
-            className={styles.preview__close}
-            onClick={closePreview}
-            autoFocus
-          >
-            CLOSE
-          </button>
-          <RoomScene
-            ref={scene}
-            lights={lights}
-            status="Live preview"
-            embedded
-          />
-        </section>
-      )}
     </section>
   );
 };
