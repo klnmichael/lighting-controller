@@ -7,8 +7,12 @@ import Map from "@/components/map";
 import RoomPreview from "@/components/room-preview";
 import type { RoomSceneHandle } from "@/components/room-scene";
 import { createLights, type LightState } from "@/lib/lights";
+import { sequenceOrder } from "@/lib/sequences";
 import Controls from "@/components/controls";
 import Settings from "@/components/settings";
+import { useControllerLightbar } from "@/lib/use-controller-lightbar";
+
+const GAMEPAD_SEQUENCES = ["random", "dark", "full", "flash", ...sequenceOrder];
 
 export default function Home() {
   const lights = useRef(createLights());
@@ -43,6 +47,9 @@ export default function Home() {
   const [accentDimming, setAccentDimming] = useState(1);
 
   const [hubUrl, setHubUrl] = useState(process.env.NEXT_PUBLIC_HUB_URL ?? "");
+  const [gamepadName, setGamepadName] = useState("");
+  const gamepadNameRef = useRef("");
+  const previousButtons = useRef<boolean[]>([]);
 
   const fetchServerSettings = async () => {
     if (hubUrl) {
@@ -138,6 +145,11 @@ export default function Home() {
       });
   };
 
+  const lightbar = useControllerLightbar(lights, (color) => {
+    onSequenceColorMode(COLOR_MODES[2]);
+    onSequenceColor(color);
+  });
+
   const onSequenceDimming = (sequenceDimming: number) => {
     setSequenceDimming(sequenceDimming);
     if (hubUrl)
@@ -198,6 +210,121 @@ export default function Home() {
       });
   };
 
+  const gamepadActions = useRef({
+    onToggle,
+    onCue,
+    onSequence,
+    onSequenceColorMode,
+    onBpm,
+    onSequenceDimming,
+    onAccentDimming,
+    sequence,
+    bpm,
+    sequenceDimming,
+    accentDimming,
+  });
+  gamepadActions.current = {
+    onToggle,
+    onCue,
+    onSequence,
+    onSequenceColorMode,
+    onBpm,
+    onSequenceDimming,
+    onAccentDimming,
+    sequence,
+    bpm,
+    sequenceDimming,
+    accentDimming,
+  };
+
+  useEffect(() => {
+    let frameId = 0;
+    let lastPoll: number | undefined;
+    const pollGamepad = (now: number) => {
+      const elapsed = Math.min(now - (lastPoll ?? now), 50) / 1000;
+      lastPoll = now;
+      const gamepad = Array.from(navigator.getGamepads()).find(
+        (candidate) => candidate?.connected && candidate.mapping === "standard",
+      );
+
+      const nextName = gamepad?.id ?? "";
+      if (nextName !== gamepadNameRef.current) {
+        gamepadNameRef.current = nextName;
+        setGamepadName(nextName);
+      }
+
+      if (!gamepad) {
+        previousButtons.current = [];
+      } else {
+        const stickAxis = (index: number) => {
+          const value = gamepad.axes[index] ?? 0;
+          const deadZone = 0.15;
+          return Math.abs(value) <= deadZone
+            ? 0
+            : (Math.sign(value) * (Math.abs(value) - deadZone)) /
+                (1 - deadZone);
+        };
+        const horizontal = stickAxis(2);
+        const vertical = stickAxis(3);
+        if (horizontal || vertical) {
+          const rotation = elapsed * 10;
+          sceneRef.current?.orbit(horizontal * rotation, vertical * rotation);
+        }
+        const pressed = gamepad.buttons.map((button) => button.pressed);
+        const wasPressed = previousButtons.current;
+        const actions = gamepadActions.current;
+
+        const justPressed = (index: number) =>
+          pressed[index] && !wasPressed[index];
+
+        if (justPressed(0)) actions.onToggle();
+        if (justPressed(1)) actions.onCue(Date.now());
+        if (justPressed(2)) actions.onSequence(Date.now(), "random");
+        if (justPressed(3)) actions.onSequence(Date.now(), "dark");
+        if (justPressed(17)) actions.onSequenceColorMode(COLOR_MODES[0]);
+
+        const changeSequence = (direction: number) => {
+          const currentIndex = GAMEPAD_SEQUENCES.indexOf(actions.sequence);
+          const nextIndex =
+            currentIndex === -1
+              ? direction > 0
+                ? 0
+                : GAMEPAD_SEQUENCES.length - 1
+              : (currentIndex + direction + GAMEPAD_SEQUENCES.length) %
+                GAMEPAD_SEQUENCES.length;
+          actions.onSequence(Date.now(), GAMEPAD_SEQUENCES[nextIndex]);
+        };
+        if (justPressed(4)) changeSequence(-1);
+        if (justPressed(5)) changeSequence(1);
+        if (justPressed(6)) {
+          actions.onSequenceDimming(
+            Math.max(0, actions.sequenceDimming - 0.05),
+          );
+        }
+        if (justPressed(7)) {
+          actions.onSequenceDimming(
+            Math.min(1, actions.sequenceDimming + 0.05),
+          );
+        }
+        if (justPressed(12)) actions.onBpm(actions.bpm + 1);
+        if (justPressed(13)) actions.onBpm(Math.max(1, actions.bpm - 1));
+        if (justPressed(14)) {
+          actions.onAccentDimming(Math.max(0, actions.accentDimming - 0.05));
+        }
+        if (justPressed(15)) {
+          actions.onAccentDimming(Math.min(1, actions.accentDimming + 0.05));
+        }
+
+        previousButtons.current = pressed;
+      }
+
+      frameId = requestAnimationFrame(pollGamepad);
+    };
+
+    frameId = requestAnimationFrame(pollGamepad);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
   useEffect(() => {
     fetchServerSettings();
   }, []);
@@ -229,6 +356,8 @@ export default function Home() {
         accentColorMode={accentColorMode}
         accentColor={accentColor}
         accentDimming={accentDimming}
+        gamepadName={gamepadName}
+        lightbar={lightbar}
         onHubUrlChange={setHubUrl}
         onToggle={onToggle}
         onOpenPreview={onOpenPreview}

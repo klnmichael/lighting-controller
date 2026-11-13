@@ -83,10 +83,6 @@ const Map = ({
     onLightsChangeRef.current = onLightsChange;
   }, [onLightsChange]);
 
-  useEffect(() => {
-    seedShiftRef.current = Math.round(Math.random() * 999);
-  }, []);
-
   const mulberry32 = (seed: number) => {
     return function () {
       let t = (seed += 0x6d2b79f5);
@@ -172,7 +168,10 @@ const Map = ({
         sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
       }
       if (accentColorModeRef.current === COLOR_MODES[0]) {
-        accentColorRef.current = getSeededItem(ACCENT_COLORS, seed * 3);
+        accentColorRef.current = getSeededItem(
+          ACCENT_COLORS,
+          seed + ACCENT_COLORS.length / 2,
+        );
       }
     }
 
@@ -256,6 +255,7 @@ const Map = ({
 
   useEffect(() => {
     cueTimestampRef.current = cueTimestamp;
+    seedShiftRef.current = Math.round(Math.random() * 999);
   }, [cueTimestamp]);
 
   useEffect(() => {
@@ -263,9 +263,11 @@ const Map = ({
   }, [bpm]);
 
   useEffect(() => {
-    if (sequenceColorMode)
-      queueRef.current.sequenceColorMode = sequenceColorMode;
-    if (sequenceColor) queueRef.current.sequenceColor = sequenceColor;
+    // if (sequenceColorMode)
+    //   queueRef.current.sequenceColorMode = sequenceColorMode;
+    if (sequenceColorMode) sequenceColorModeRef.current = sequenceColorMode;
+    // if (sequenceColor) queueRef.current.sequenceColor = sequenceColor;
+    if (sequenceColor) sequenceColorRef.current = sequenceColor;
     if (accent || accent === "") queueRef.current.accent = accent;
     if (accentColorMode) queueRef.current.accentColorMode = accentColorMode;
     if (accentColor) queueRef.current.accentColor = accentColor;

@@ -30,6 +30,7 @@ import styles from "./room-scene.module.scss";
 
 export interface RoomSceneHandle {
   invalidate: () => void;
+  orbit: (horizontal: number, vertical: number) => void;
 }
 
 export default function RoomScene({
@@ -41,12 +42,14 @@ export default function RoomScene({
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const requestRenderRef = useRef<() => void>(() => {});
+  const orbitRef = useRef<RoomSceneHandle["orbit"]>(() => {});
   const [error, setError] = useState("");
 
   useImperativeHandle(
     ref,
     () => ({
       invalidate: () => requestRenderRef.current(),
+      orbit: (horizontal, vertical) => orbitRef.current(horizontal, vertical),
     }),
     [],
   );
@@ -267,6 +270,14 @@ export default function RoomScene({
       }
     };
     requestRenderRef.current = requestRender;
+    orbitRef.current = (horizontal, vertical) => {
+      if (disposed || contextLost || document.hidden) return;
+      // OrbitControls applies each rotation over multiple damping frames.
+      const damping = controls.enableDamping ? controls.dampingFactor : 1;
+      controls.rotateLeft(-horizontal * damping);
+      controls.rotateUp(-vertical * damping);
+      requestRender();
+    };
 
     const onCameraChange = () => {
       cameraDirty = true;
@@ -398,6 +409,7 @@ export default function RoomScene({
       disposed = true;
       cancelAnimationFrame(animationFrame);
       requestRenderRef.current = () => {};
+      orbitRef.current = () => {};
       document.removeEventListener("visibilitychange", onVisibilityChange);
       observer.disconnect();
       controls.removeEventListener("change", onCameraChange);

@@ -14,6 +14,7 @@ import {
 import Count from "../count";
 import styles from "./controls.module.scss";
 import packageJson from "../../../package.json";
+import type { useControllerLightbar } from "@/lib/use-controller-lightbar";
 
 const PressButton = ({
   onPress,
@@ -90,6 +91,8 @@ export interface MapProps {
   accentColorMode?: string;
   accentColor?: Color;
   accentDimming: number;
+  gamepadName: string;
+  lightbar: ReturnType<typeof useControllerLightbar>;
   onHubUrlChange: (hubUrl: string) => void;
   onToggle: () => void;
   onOpenPreview: () => void;
@@ -117,6 +120,8 @@ const Controls = ({
   accentColorMode,
   accentColor,
   accentDimming,
+  gamepadName,
+  lightbar,
   onHubUrlChange,
   onToggle,
   onOpenPreview,
@@ -187,15 +192,57 @@ const Controls = ({
           <PressButton onPress={onToggle}>I/O</PressButton>
           <PressButton onPress={() => onCue(Date.now())}>CUE</PressButton>
         </div>
-        <label className={styles.hubUrl}>
-          v.{packageJson.version}
-          <input
-            type="url"
-            value={hubUrl}
-            placeholder="http://hubURL:3000"
-            onChange={(e) => onHubUrlChange(e.target.value)}
-          />
-        </label>
+        <div className={styles.temp}>
+          <label className={styles.hubUrl}>
+            v.{packageJson.version}
+            <input
+              type="url"
+              value={hubUrl}
+              placeholder="http://hubURL:3000"
+              onChange={(e) => onHubUrlChange(e.target.value)}
+            />
+          </label>
+          <details className={styles.gamepad}>
+            <summary>{gamepadName ? "Controller" : "PS5 Controls"}</summary>
+            <div>
+              {gamepadName && <span>{gamepadName}</span>}
+              <p>
+                Cross: toggle output · Circle: cue · Square: random · Triangle:
+                full
+              </p>
+              <p>L1/R1: effects · L2/R2: sequence brightness</p>
+              <p>D-pad up/down: BPM · left/right: accent brightness</p>
+              <p>Right stick: orbit the camera while the 3D preview is open</p>
+              <p>
+                Touchpad: 5 columns × 2 rows of active colors, left to right,
+                top to bottom. Touch/slide to preview; lift to select the
+                sequence color. Enable light bar sync below to use the touchpad.
+              </p>
+              <p>
+                Touchpad click: random sequence colors; cancels touch selection.
+              </p>
+              <p>
+                Sync the DualSense light bar to the most common illuminated
+                color. Requires Chrome/Edge on HTTPS or localhost and device
+                permission.
+              </p>
+              <button
+                type="button"
+                disabled={
+                  !lightbar.supported || lightbar.busy || lightbar.connected
+                }
+                onClick={lightbar.connect}
+              >
+                {lightbar.connected
+                  ? "Light bar synced"
+                  : lightbar.busy
+                    ? "Connecting light bar..."
+                    : "Sync light bar"}
+              </button>
+              {lightbar.error && <p role="alert">{lightbar.error}</p>}
+            </div>
+          </details>
+        </div>
         <div className={styles.group}>
           <Count cueTimestamp={cueTimestamp} bpm={bpm} sequence={sequence} />
           <PressButton
