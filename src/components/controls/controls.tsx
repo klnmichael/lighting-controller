@@ -192,7 +192,7 @@ const Controls = ({
           <input
             type="url"
             value={hubUrl}
-            placeholder="http://localhost:3000"
+            placeholder="http://hubURL:3000"
             onChange={(e) => onHubUrlChange(e.target.value)}
           />
         </label>
