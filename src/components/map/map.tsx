@@ -42,6 +42,7 @@ const Map = ({
   accentDimming,
   onLightsChange,
 }: MapProps) => {
+  const seedShiftRef = useRef(0);
   const seedLoopRef = useRef(0);
   const cueTimestampRef = useRef(cueTimestamp);
   const bpmRef = useRef(bpm);
@@ -82,6 +83,10 @@ const Map = ({
     onLightsChangeRef.current = onLightsChange;
   }, [onLightsChange]);
 
+  useEffect(() => {
+    seedShiftRef.current = Math.round(Math.random() * 999);
+  }, []);
+
   const mulberry32 = (seed: number) => {
     return function () {
       let t = (seed += 0x6d2b79f5);
@@ -115,7 +120,10 @@ const Map = ({
 
   const loop = () => {
     const time = Date.now();
-    const seed = (time - cueTimestampRef.current) / (60000 / bpmRef.current);
+    const seed = Math.round(
+      (time - cueTimestampRef.current) / (60000 / bpmRef.current) +
+        seedShiftRef.current,
+    );
     const beat =
       ((time - cueTimestampRef.current) / (60000 / bpmRef.current)) % 16;
     const beatFloor = Math.floor(beat);
