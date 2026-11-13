@@ -113,6 +113,93 @@
     font-size: inherit;
   }
 }
+.container .touchpadDialog {
+  box-sizing: border-box;
+  width: min(42rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100vh - 2rem);
+  padding: 1.25rem;
+  border: 1px solid #555;
+  background: #111;
+  color: #fff;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.8);
+  font-size: 0.875rem;
+
+  &::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+
+  p {
+    margin: 0.75rem 0;
+  }
+
+  button {
+    width: auto;
+    aspect-ratio: auto;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+}
+.touchpadMap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 600 / 250;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  &__zones {
+    position: absolute;
+    left: 4%;
+    top: 9.6%;
+    width: 92%;
+    height: 80%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__row {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+
+    & + & {
+      border-top: 1px solid #777e8a;
+    }
+
+    span {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 0.15rem;
+      text-align: center;
+      overflow-wrap: anywhere;
+      font-size: clamp(0.55rem, 1.7vw, 0.85rem);
+    }
+
+    span + span {
+      border-left: 1px solid #777e8a;
+    }
+  }
+}
 .decrease,
 .increase {
   font-size: 2vw !important;

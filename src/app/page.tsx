@@ -11,6 +11,7 @@ import { sequenceOrder } from "@/lib/sequences";
 import Controls from "@/components/controls";
 import Settings from "@/components/settings";
 import { useControllerLightbar } from "@/lib/use-controller-lightbar";
+import { JoystickColorSelection } from "@/lib/joystick-color";
 
 const GAMEPAD_SEQUENCES = ["random", "dark", "full", "flash", ...sequenceOrder];
 
@@ -145,11 +146,6 @@ export default function Home() {
       });
   };
 
-  const lightbar = useControllerLightbar(lights, (color) => {
-    onSequenceColorMode(COLOR_MODES[2]);
-    onSequenceColor(color);
-  });
-
   const onSequenceDimming = (sequenceDimming: number) => {
     setSequenceDimming(sequenceDimming);
     if (hubUrl)
@@ -198,6 +194,12 @@ export default function Home() {
       });
   };
 
+  const lightbar = useControllerLightbar(
+    lights,
+    (name) => onSequence(Date.now(), name),
+    onAccent,
+  );
+
   const onAccentDimming = (accentDimming: number) => {
     setAccentDimming(accentDimming);
     if (hubUrl)
@@ -215,6 +217,11 @@ export default function Home() {
     onCue,
     onSequence,
     onSequenceColorMode,
+    onSequenceColor,
+    onAccentColorMode,
+    onAccentColor,
+    onAccent,
+    onJoystickPreview: lightbar.onJoystickPreview,
     onBpm,
     onSequenceDimming,
     onAccentDimming,
@@ -228,6 +235,11 @@ export default function Home() {
     onCue,
     onSequence,
     onSequenceColorMode,
+    onSequenceColor,
+    onAccentColorMode,
+    onAccentColor,
+    onAccent,
+    onJoystickPreview: lightbar.onJoystickPreview,
     onBpm,
     onSequenceDimming,
     onAccentDimming,
@@ -239,13 +251,21 @@ export default function Home() {
 
   useEffect(() => {
     let frameId = 0;
-    let lastPoll: number | undefined;
-    const pollGamepad = (now: number) => {
-      const elapsed = Math.min(now - (lastPoll ?? now), 50) / 1000;
-      lastPoll = now;
+    let leftStick = new JoystickColorSelection();
+    let rightStick = new JoystickColorSelection();
+    let controllerKey = "";
+    const pollGamepad = () => {
       const gamepad = Array.from(navigator.getGamepads()).find(
         (candidate) => candidate?.connected && candidate.mapping === "standard",
       );
+      const nextKey = gamepad ? `${gamepad.index}:${gamepad.id}` : "";
+      if (nextKey !== controllerKey) {
+        controllerKey = nextKey;
+        leftStick = new JoystickColorSelection();
+        rightStick = new JoystickColorSelection();
+        previousButtons.current = [];
+        gamepadActions.current.onJoystickPreview(null);
+      }
 
       const nextName = gamepad?.id ?? "";
       if (nextName !== gamepadNameRef.current) {
@@ -256,20 +276,6 @@ export default function Home() {
       if (!gamepad) {
         previousButtons.current = [];
       } else {
-        const stickAxis = (index: number) => {
-          const value = gamepad.axes[index] ?? 0;
-          const deadZone = 0.15;
-          return Math.abs(value) <= deadZone
-            ? 0
-            : (Math.sign(value) * (Math.abs(value) - deadZone)) /
-                (1 - deadZone);
-        };
-        const horizontal = stickAxis(2);
-        const vertical = stickAxis(3);
-        if (horizontal || vertical) {
-          const rotation = elapsed * 10;
-          sceneRef.current?.orbit(horizontal * rotation, vertical * rotation);
-        }
         const pressed = gamepad.buttons.map((button) => button.pressed);
         const wasPressed = previousButtons.current;
         const actions = gamepadActions.current;
@@ -279,9 +285,34 @@ export default function Home() {
 
         if (justPressed(0)) actions.onToggle();
         if (justPressed(1)) actions.onCue(Date.now());
-        if (justPressed(2)) actions.onSequence(Date.now(), "random");
+        if (justPressed(2)) {
+          actions.onSequence(Date.now(), "random");
+          actions.onAccent("random");
+        }
         if (justPressed(3)) actions.onSequence(Date.now(), "dark");
-        if (justPressed(17)) actions.onSequenceColorMode(COLOR_MODES[0]);
+        if (justPressed(17)) actions.onAccent("");
+        if (justPressed(10)) actions.onSequenceColorMode(COLOR_MODES[0]);
+        if (justPressed(11)) actions.onAccentColorMode(COLOR_MODES[0]);
+
+        const left = leftStick.update(
+          gamepad.axes[0] ?? 0,
+          gamepad.axes[1] ?? 0,
+          Boolean(pressed[10] || pressed[17]),
+        );
+        const right = rightStick.update(
+          gamepad.axes[2] ?? 0,
+          gamepad.axes[3] ?? 0,
+          Boolean(pressed[11]),
+        );
+        actions.onJoystickPreview(right.preview ?? left.preview);
+        if (left.selected) {
+          actions.onSequenceColorMode(COLOR_MODES[2]);
+          actions.onSequenceColor(left.selected);
+        }
+        if (right.selected) {
+          actions.onAccentColorMode(COLOR_MODES[2]);
+          actions.onAccentColor(right.selected);
+        }
 
         const changeSequence = (direction: number) => {
           const currentIndex = GAMEPAD_SEQUENCES.indexOf(actions.sequence);
@@ -308,12 +339,12 @@ export default function Home() {
         }
         if (justPressed(12)) actions.onBpm(actions.bpm + 1);
         if (justPressed(13)) actions.onBpm(Math.max(1, actions.bpm - 1));
-        if (justPressed(14)) {
-          actions.onAccentDimming(Math.max(0, actions.accentDimming - 0.05));
-        }
-        if (justPressed(15)) {
-          actions.onAccentDimming(Math.min(1, actions.accentDimming + 0.05));
-        }
+        // if (justPressed(14)) {
+        //   actions.onAccentDimming(Math.max(0, actions.accentDimming - 0.05));
+        // }
+        // if (justPressed(15)) {
+        //   actions.onAccentDimming(Math.min(1, actions.accentDimming + 0.05));
+        // }
 
         previousButtons.current = pressed;
       }
@@ -322,7 +353,10 @@ export default function Home() {
     };
 
     frameId = requestAnimationFrame(pollGamepad);
-    return () => cancelAnimationFrame(frameId);
+    return () => {
+      cancelAnimationFrame(frameId);
+      gamepadActions.current.onJoystickPreview(null);
+    };
   }, []);
 
   useEffect(() => {

@@ -30,19 +30,34 @@ When all lights are dark, the light bar turns off. Updates are checked every
 100 ms and sent only when the majority color changes. After a disconnect or
 reload, enable sync again.
 
-With sync enabled, the touchpad selects from `ACTIVE_COLORS` in a 5-column,
-2-row grid: array order runs left to right across the top row, then the bottom
-row. Touch and slide to preview the color on the controller without changing
-the sequences. Lift your finger to apply the last previewed color to sequences
-and switch to custom-color mode, including on the connected hub. The light bar
-then resumes following the illuminated lights. With multiple fingers, the first
-finger controls the preview; selection commits when all fingers lift.
-Disconnecting cancels an unfinished selection.
+With sync enabled, the touchpad maps its top row left to right to Pulsate,
+Wave Radiate Out, Wave Kitchen Wall, Circle 1, and Circle 2. The bottom row maps
+left to right to 2/4/8 Drum and 2/4/8 Snare. Touch and slide, then lift to
+select. With multiple fingers, the first finger controls the selection; it
+commits when all fingers lift. Disconnecting cancels an unfinished selection.
+Open **Show touchpad map** in the controller dropdown to see the mapped zones.
 
-Click the touchpad to activate random sequence-color mode (without changing
-the sequence effect). Clicking cancels the current touch selection, so lifting
-your finger afterward does not restore custom-color mode. Touchpad clicks work
-without light bar sync permission.
+Click the touchpad to clear the active accent without changing the sequence.
+Clicking cancels the current touch selection, so lifting your finger afterward
+does not trigger a mapped effect. Touchpad clicks work without light bar sync
+permission.
+
+## Joystick colors
+
+The left stick selects the sequence color; the right stick selects the accent
+color (replacing right-stick camera orbit). Each maps `ACTIVE_COLORS` clockwise
+around a circle, with the first color at up and equally spaced color sectors.
+Tilt a stick to preview its color; return it to the center to apply that color
+in custom-color mode, including on the connected hub. A 15% radial dead zone
+prevents drift from selecting colors.
+
+Press L3 for random sequence colors or R3 for random accent colors, without
+changing the active effects. A click cancels that stick's pending selection
+until it is released and centered. Disconnecting also cancels pending selections.
+Color selection works without WebHID permission; controller light-bar previews
+require **Sync light bar**. While tilted, even a stationary stick keeps the
+preview active. If both sticks are tilted, the right stick's preview takes
+priority. Normal light-bar sync resumes when all previews end.
 
 ## Start Hub
 

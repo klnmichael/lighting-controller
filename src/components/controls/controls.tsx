@@ -11,6 +11,7 @@ import {
   COLOR_MODES,
   SEQUENCE_COLORS,
 } from "@/lib/constants";
+import { TOUCHPAD_SEQUENCES } from "@/lib/dualsense-touchpad";
 import Count from "../count";
 import styles from "./controls.module.scss";
 import packageJson from "../../../package.json";
@@ -138,6 +139,7 @@ const Controls = ({
 }: MapProps) => {
   const resetTapTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const tapTimes = useRef<number[]>([]);
+  const touchpadDialogRef = useRef<HTMLDialogElement>(null);
 
   const onBpmTap = () => {
     const currentTime = Date.now();
@@ -203,7 +205,7 @@ const Controls = ({
             />
           </label>
           <details className={styles.gamepad}>
-            <summary>{gamepadName ? "Controller" : "PS5 Controls"}</summary>
+            <summary>PS5 Controls</summary>
             <div>
               {gamepadName && <span>{gamepadName}</span>}
               <p>
@@ -212,15 +214,90 @@ const Controls = ({
               </p>
               <p>L1/R1: effects · L2/R2: sequence brightness</p>
               <p>D-pad up/down: BPM · left/right: accent brightness</p>
-              <p>Right stick: orbit the camera while the 3D preview is open</p>
               <p>
-                Touchpad: 5 columns × 2 rows of active colors, left to right,
-                top to bottom. Touch/slide to preview; lift to select the
-                sequence color. Enable light bar sync below to use the touchpad.
+                Left stick: sequence color · Right stick: accent color. Colors
+                run clockwise from up. Tilt to preview; center to apply. L3/R3:
+                random sequence/accent colors.
               </p>
               <p>
-                Touchpad click: random sequence colors; cancels touch selection.
+                Touchpad (with sync): top row selects{" "}
+                {TOUCHPAD_SEQUENCES.map((name) => sequences[name].title).join(
+                  ", ",
+                )}
+                ; bottom row selects{" "}
+                {accentOrder.map((name) => accents[name].title).join(", ")}.
+                Touch and lift to select.
               </p>
+              <p>
+                Touchpad click: clear the active accent; cancels touch
+                selection.
+              </p>
+              <button
+                type="button"
+                onClick={() => touchpadDialogRef.current?.showModal()}
+              >
+                Show touchpad map
+              </button>
+              <dialog
+                ref={touchpadDialogRef}
+                className={styles.touchpadDialog}
+                aria-labelledby="touchpad-map-title"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    touchpadDialogRef.current?.close();
+                  }
+                }}
+              >
+                <div className={styles.touchpadDialog__header}>
+                  <h2 id="touchpad-map-title">Touchpad map</h2>
+                  <form method="dialog">
+                    <button type="submit" autoFocus>
+                      Close
+                    </button>
+                  </form>
+                </div>
+                <p>Touch and lift to select. Light bar sync is required.</p>
+                <div className={styles.touchpadMap}>
+                  <svg viewBox="0 0 600 250" aria-hidden="true">
+                    <path
+                      d="M12 12 Q300 2 588 12 L580 216 Q578 238 555 242 Q300 250 45 242 Q22 238 20 216 Z"
+                      fill="#e2e4e8"
+                      stroke="#858a94"
+                      strokeWidth="3"
+                    />
+                    <rect
+                      x="24"
+                      y="24"
+                      width="552"
+                      height="200"
+                      rx="12"
+                      fill="#20242c"
+                      stroke="#777e8a"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                  <div className={styles.touchpadMap__zones}>
+                    <div
+                      className={styles.touchpadMap__row}
+                      aria-label="Sequences"
+                    >
+                      {TOUCHPAD_SEQUENCES.map((name) => (
+                        <span key={name}>{sequences[name].title}</span>
+                      ))}
+                    </div>
+                    <div
+                      className={styles.touchpadMap__row}
+                      aria-label="Accents"
+                    >
+                      {accentOrder.map((name) => (
+                        <span key={name}>{accents[name].title}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <p>Click the touchpad to clear the active accent.</p>
+              </dialog>
               <p>
                 Sync the DualSense light bar to the most common illuminated
                 color. Requires Chrome/Edge on HTTPS or localhost and device

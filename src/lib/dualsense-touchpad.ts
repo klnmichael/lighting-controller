@@ -1,11 +1,22 @@
-import { ACTIVE_COLORS } from "./constants.ts";
-import type { Color } from "../types/global.ts";
+import { accentOrder } from "./accents.ts";
 
 export interface TouchPoint {
   id: number;
   x: number;
   y: number;
 }
+
+export const TOUCHPAD_SEQUENCES = [
+  "pulsate",
+  "waveRadiateOut",
+  "waveKitchenWall",
+  "circle1",
+  "circle2",
+] as const;
+
+export type TouchpadAction =
+  | { type: "sequence"; name: (typeof TOUCHPAD_SEQUENCES)[number] }
+  | { type: "accent"; name: string };
 
 export function dualSenseTouches(
   reportId: number,
@@ -36,42 +47,47 @@ export function dualSenseTouches(
 
 export class DualSenseTouchpadSelection {
   private contactId: number | null = null;
-  private color: Color | null = null;
+  private action: TouchpadAction | null = null;
   private cancelled = false;
 
   update(touches: TouchPoint[], clicked = false): {
-    preview: Color | null;
-    selected: Color | null;
+    selected: TouchpadAction | null;
   } {
     if (clicked) {
       this.cancelled = true;
       this.contactId = null;
-      this.color = null;
+      this.action = null;
     }
     if (this.cancelled) {
       if (!clicked && !touches.length) this.cancelled = false;
-      return { preview: null, selected: null };
+      return { selected: null };
     }
     if (!touches.length) {
-      const selected = this.color;
+      const selected = this.action;
       this.contactId = null;
-      this.color = null;
-      return { preview: null, selected };
+      this.action = null;
+      return { selected };
     }
     this.contactId ??= touches[0].id;
     const touch = touches.find((point) => point.id === this.contactId);
-    // Keep the first finger in control until all fingers are lifted.
     if (touch) {
-      const columns = 5;
-      const rows = Math.ceil(ACTIVE_COLORS.length / columns);
-      const column = Math.min(
-        columns - 1,
-        Math.floor((touch.x * columns) / 1920),
-      );
-      const row = Math.min(rows - 1, Math.floor((touch.y * rows) / 1080));
-      this.color =
-        ACTIVE_COLORS[Math.min(ACTIVE_COLORS.length - 1, row * columns + column)];
+      if (touch.y < 540) {
+        const column = Math.min(
+          TOUCHPAD_SEQUENCES.length - 1,
+          Math.floor((touch.x * TOUCHPAD_SEQUENCES.length) / 1920),
+        );
+        this.action = {
+          type: "sequence",
+          name: TOUCHPAD_SEQUENCES[column],
+        };
+      } else {
+        const column = Math.min(
+          accentOrder.length - 1,
+          Math.floor((touch.x * accentOrder.length) / 1920),
+        );
+        this.action = { type: "accent", name: accentOrder[column] };
+      }
     }
-    return { preview: this.color, selected: null };
+    return { selected: null };
   }
 }
