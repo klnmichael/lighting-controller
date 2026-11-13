@@ -19,7 +19,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-let seedLoop = 0;
+let seedShift = 0;
 let cueTimestamp = 0;
 let bpm = 120;
 
@@ -103,7 +103,7 @@ const buildParams = (config: WizLight): WizLight => {
 
 const loop = () => {
   const time = Date.now();
-  const seed = (time - cueTimestamp) / (60000 / bpm);
+  const seed = Math.round((time - cueTimestamp) / (60000 / bpm) + seedShift);
   const beat = ((time - cueTimestamp) / (60000 / bpm)) % 16;
   const beatFloor = Math.floor(beat);
   const tick = (beat - beatFloor) * 4;
@@ -202,7 +202,6 @@ const loop = () => {
 
 const startLoop = () => {
   if (!loopInterval) {
-    seedLoop = 0;
     currentBeat = -1;
     currentTick = -1;
     loop();
@@ -219,24 +218,11 @@ const stopLoop = () => {
 };
 
 app.get("/", async (_, res) => {
-  res.status(200).json({
-    hubUrl: `http://${ip.address()}:${process.env.HUB_PORT}`,
-  });
+  res.status(200).send(`${ip.address()}:${process.env.HUB_PORT}`);
 });
 
 app.get("/settings", async (_, res) => {
-  res.status(200).json({
-    cueTimestamp,
-    bpm,
-    sequence: queue.sequence || activeSequence,
-    sequenceColorMode: queue.sequenceColorMode || sequenceColorMode,
-    sequenceColor: queue.sequenceColor || sequenceColor,
-    sequenceDimming,
-    accent: queue.accent || activeAccent,
-    accentColorMode: queue.accentColorMode || accentColorMode,
-    accentColor: queue.accentColor || accentColor,
-    accentDimming,
-  });
+  res.status(200).json({});
 });
 
 app.post("/toggle", async (_, res) => {
@@ -247,24 +233,29 @@ app.post("/toggle", async (_, res) => {
 });
 
 app.post("/cue", async (req, res) => {
+  console.log(req.body);
   cueTimestamp = req.body.timestamp;
+  seedShift = req.body.seedShift;
   res.status(200).json({});
 });
 
 app.post("/bpm", async (req, res) => {
+  console.log(req.body);
   bpm = req.body.bpm;
   res.status(200).json({});
 });
 
 app.post("/sequence", async (req, res) => {
+  console.log(req.body);
   const { timestamp, sequence } = req.body;
   if (sequence) {
     if (activeSequence && sequence !== activeSequence) {
       queue.sequence = sequence;
     } else {
+      cueTimestamp = timestamp;
+      seedShift = req.body.seedShift;
       activeSequence = sequence;
       runningSequence = sequence;
-      cueTimestamp = timestamp;
       startLoop();
     }
   } else {
@@ -276,6 +267,7 @@ app.post("/sequence", async (req, res) => {
 });
 
 app.post("/update", async (req, res) => {
+  console.log(req.body);
   const {
     sequenceColorMode,
     sequenceColor,
@@ -304,7 +296,7 @@ app.post("/dimming", async (req, res) => {
 });
 
 const server = app.listen(process.env.HUB_PORT, () => {
-  console.log(`http://${ip.address()}:${process.env.HUB_PORT}`);
+  console.log(`${ip.address()}:${process.env.HUB_PORT}`);
 });
 
 server.on("close", () => {

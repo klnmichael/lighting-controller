@@ -17,6 +17,7 @@ import styles from "./map.module.scss";
 
 export interface MapProps {
   cueTimestamp: number;
+  seedShift: number;
   bpm: number;
   sequence?: string;
   sequenceColorMode: string;
@@ -31,6 +32,7 @@ export interface MapProps {
 
 const Map = ({
   cueTimestamp,
+  seedShift,
   bpm,
   sequence,
   sequenceColorMode,
@@ -43,7 +45,6 @@ const Map = ({
   onLightsChange,
 }: MapProps) => {
   const seedShiftRef = useRef(0);
-  const seedLoopRef = useRef(0);
   const cueTimestampRef = useRef(cueTimestamp);
   const bpmRef = useRef(bpm);
 
@@ -236,7 +237,6 @@ const Map = ({
 
   const startLoop = () => {
     if (!loopInterval.current) {
-      seedLoopRef.current = 0;
       currentBeat.current = -1;
       currentTick.current = -1;
       loop();
@@ -255,19 +255,20 @@ const Map = ({
 
   useEffect(() => {
     cueTimestampRef.current = cueTimestamp;
-    seedShiftRef.current = Math.round(Math.random() * 999);
   }, [cueTimestamp]);
+
+  useEffect(() => {
+    seedShiftRef.current = seedShift;
+  }, [seedShift]);
 
   useEffect(() => {
     bpmRef.current = bpm;
   }, [bpm]);
 
   useEffect(() => {
-    // if (sequenceColorMode)
-    //   queueRef.current.sequenceColorMode = sequenceColorMode;
-    if (sequenceColorMode) sequenceColorModeRef.current = sequenceColorMode;
-    // if (sequenceColor) queueRef.current.sequenceColor = sequenceColor;
-    if (sequenceColor) sequenceColorRef.current = sequenceColor;
+    if (sequenceColorMode)
+      queueRef.current.sequenceColorMode = sequenceColorMode;
+    if (sequenceColor) queueRef.current.sequenceColor = sequenceColor;
     if (accent || accent === "") queueRef.current.accent = accent;
     if (accentColorMode) queueRef.current.accentColorMode = accentColorMode;
     if (accentColor) queueRef.current.accentColor = accentColor;

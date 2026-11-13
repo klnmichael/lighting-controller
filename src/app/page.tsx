@@ -36,7 +36,9 @@ export default function Home() {
     lights.current = nextLights;
     sceneRef.current?.invalidate();
   }, []);
+
   const [cueTimestamp, setCueTimestamp] = useState(0);
+  const [seedShift, setSeedShift] = useState(0);
   const [bpm, setBpm] = useState(120);
   const [sequence, setSequence] = useState("");
   const [sequenceColorMode, setSequenceColorMode] = useState(COLOR_MODES[0]);
@@ -47,14 +49,14 @@ export default function Home() {
   const [accentColor, setAccentColor] = useState<Color>([255, 255, 255]);
   const [accentDimming, setAccentDimming] = useState(1);
 
-  const [hubUrl, setHubUrl] = useState(process.env.NEXT_PUBLIC_HUB_URL ?? "");
+  const [hubUrl, setHubUrl] = useState("");
   const [gamepadName, setGamepadName] = useState("");
   const gamepadNameRef = useRef("");
   const previousButtons = useRef<boolean[]>([]);
 
   const fetchServerSettings = async () => {
     if (hubUrl) {
-      const settings: any = await fetch(`${hubUrl}/settings`, {
+      const settings: any = await fetch(`http://${hubUrl}/settings`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +78,7 @@ export default function Home() {
   const onToggle = () => {
     setSequence("");
     if (hubUrl)
-      fetch(`${hubUrl}/toggle`, {
+      fetch(`http://${hubUrl}/toggle`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -87,20 +89,22 @@ export default function Home() {
 
   const onCue = (timestamp: number) => {
     setCueTimestamp(timestamp);
+    const seedShift = Math.round(Math.random() * 999);
+    setSeedShift(seedShift);
     if (hubUrl)
-      fetch(`${hubUrl}/cue`, {
+      fetch(`http://${hubUrl}/cue`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ timestamp }),
+        body: JSON.stringify({ timestamp, seedShift }),
       });
   };
 
   const onBpm = (bpm: number) => {
     setBpm(bpm);
     if (hubUrl)
-      fetch(`${hubUrl}/bpm`, {
+      fetch(`http://${hubUrl}/bpm`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -111,21 +115,23 @@ export default function Home() {
 
   const onSequence = (timestamp: number, sequence: string) => {
     if (!cueTimestamp) setCueTimestamp(timestamp);
+    const seedShift = Math.round(Math.random() * 999);
+    setSeedShift(seedShift);
     setSequence(sequence);
     if (hubUrl)
-      fetch(`${hubUrl}/sequence`, {
+      fetch(`http://${hubUrl}/sequence`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ timestamp, sequence }),
+        body: JSON.stringify({ timestamp, seedShift, sequence }),
       });
   };
 
   const onSequenceColorMode = (sequenceColorMode: string) => {
     setSequenceColorMode(sequenceColorMode);
     if (hubUrl)
-      fetch(`${hubUrl}/update`, {
+      fetch(`http://${hubUrl}/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,7 +143,7 @@ export default function Home() {
   const onSequenceColor = (sequenceColor: Color) => {
     setSequenceColor(sequenceColor);
     if (hubUrl)
-      fetch(`${hubUrl}/update`, {
+      fetch(`http://${hubUrl}/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -149,7 +155,7 @@ export default function Home() {
   const onSequenceDimming = (sequenceDimming: number) => {
     setSequenceDimming(sequenceDimming);
     if (hubUrl)
-      fetch(`${hubUrl}/dimming`, {
+      fetch(`http://${hubUrl}/dimming`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -161,7 +167,7 @@ export default function Home() {
   const onAccent = (accent: string) => {
     setAccent(accent);
     if (hubUrl)
-      fetch(`${hubUrl}/update`, {
+      fetch(`http://${hubUrl}/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -173,7 +179,7 @@ export default function Home() {
   const onAccentColorMode = (accentColorMode: string) => {
     setAccentColorMode(accentColorMode);
     if (hubUrl)
-      fetch(`${hubUrl}/update`, {
+      fetch(`http://${hubUrl}/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -185,7 +191,7 @@ export default function Home() {
   const onAccentColor = (accentColor: Color) => {
     setAccentColor(accentColor);
     if (hubUrl)
-      fetch(`${hubUrl}/update`, {
+      fetch(`http://${hubUrl}/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -203,7 +209,7 @@ export default function Home() {
   const onAccentDimming = (accentDimming: number) => {
     setAccentDimming(accentDimming);
     if (hubUrl)
-      fetch(`${hubUrl}/dimming`, {
+      fetch(`http://${hubUrl}/dimming`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -339,12 +345,10 @@ export default function Home() {
         }
         if (justPressed(12)) actions.onBpm(actions.bpm + 1);
         if (justPressed(13)) actions.onBpm(Math.max(1, actions.bpm - 1));
-        // if (justPressed(14)) {
-        //   actions.onAccentDimming(Math.max(0, actions.accentDimming - 0.05));
-        // }
-        // if (justPressed(15)) {
-        //   actions.onAccentDimming(Math.min(1, actions.accentDimming + 0.05));
-        // }
+        if (justPressed(14)) {
+        }
+        if (justPressed(15)) {
+        }
 
         previousButtons.current = pressed;
       }
@@ -367,6 +371,7 @@ export default function Home() {
     <>
       <Map
         cueTimestamp={cueTimestamp}
+        seedShift={seedShift}
         bpm={bpm}
         sequence={sequence}
         sequenceColorMode={sequenceColorMode}

@@ -152,7 +152,7 @@ const Controls = ({
       }
       const averageInterval = totalInterval / (tapTimes.current.length - 1);
       const bpm = 60000 / averageInterval;
-      onBpm(Math.floor(bpm));
+      onBpm(Math.round(bpm));
     }
     if (resetTapTimeout.current) clearTimeout(resetTapTimeout.current);
     resetTapTimeout.current = setTimeout(() => {
@@ -200,7 +200,7 @@ const Controls = ({
             <input
               type="url"
               value={hubUrl}
-              placeholder="http://hubURL:3000"
+              placeholder="192.168.0.0:3000"
               onChange={(e) => onHubUrlChange(e.target.value)}
             />
           </label>
@@ -342,7 +342,9 @@ const Controls = ({
             +
           </PressButton>
           <PressButton onPress={onBpmTap}>TAP</PressButton>
-          <PressButton onPress={onBpmListen}>LISTEN</PressButton>
+          <PressButton className={styles.listen} onPress={onBpmListen}>
+            LISTEN
+          </PressButton>
           <button type="button" onClick={onOpenPreview}>
             3D
           </button>
