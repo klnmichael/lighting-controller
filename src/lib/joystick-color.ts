@@ -1,11 +1,16 @@
-import { ACTIVE_COLORS } from "./constants.ts";
 import type { Color } from "../types/global.ts";
 
 export class JoystickColorSelection {
   private color: Color | null = null;
   private cancelled = false;
 
-  update(x: number, y: number, clicked = false): {
+  constructor(private colors: Color[]) {}
+
+  update(
+    x: number,
+    y: number,
+    clicked = false,
+  ): {
     preview: Color | null;
     selected: Color | null;
   } {
@@ -26,9 +31,9 @@ export class JoystickColorSelection {
     // Array order runs clockwise, with the first color centered at twelve o'clock.
     const angle = (Math.atan2(x, -y) + 2 * Math.PI) % (2 * Math.PI);
     const index =
-      Math.round(angle * ACTIVE_COLORS.length / (2 * Math.PI)) %
-      ACTIVE_COLORS.length;
-    this.color = ACTIVE_COLORS[index];
+      Math.round((angle * this.colors.length) / (2 * Math.PI)) %
+      this.colors.length;
+    this.color = this.colors[index];
     return { preview: this.color, selected: null };
   }
 }

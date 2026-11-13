@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Color } from "@/types/global";
-import { COLOR_MODES, HUB_URL_STORAGE_KEY } from "@/lib/constants";
+import {
+  ACCENT_COLORS,
+  COLOR_MODES,
+  HUB_URL_STORAGE_KEY,
+  SEQUENCE_COLORS,
+} from "@/lib/constants";
 import Map from "@/components/map";
 import RoomPreview from "@/components/room-preview";
 import type { RoomSceneHandle } from "@/components/room-scene";
@@ -270,8 +275,8 @@ export default function Home() {
 
   useEffect(() => {
     let frameId = 0;
-    let leftStick = new JoystickColorSelection();
-    let rightStick = new JoystickColorSelection();
+    let leftStick = new JoystickColorSelection(SEQUENCE_COLORS);
+    let rightStick = new JoystickColorSelection(ACCENT_COLORS);
     let controllerKey = "";
     const pollGamepad = () => {
       const gamepad = Array.from(navigator.getGamepads()).find(
@@ -280,8 +285,8 @@ export default function Home() {
       const nextKey = gamepad ? `${gamepad.index}:${gamepad.id}` : "";
       if (nextKey !== controllerKey) {
         controllerKey = nextKey;
-        leftStick = new JoystickColorSelection();
-        rightStick = new JoystickColorSelection();
+        leftStick = new JoystickColorSelection(SEQUENCE_COLORS);
+        rightStick = new JoystickColorSelection(ACCENT_COLORS);
         previousButtons.current = [];
         gamepadActions.current.onJoystickPreview(null);
       }
