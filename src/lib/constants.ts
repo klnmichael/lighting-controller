@@ -44,6 +44,8 @@ export const DANCE: number[] = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
 
 export const COLOR_MODES = ["random", "timeline", "custom"];
 
+export const HUB_URL_STORAGE_KEY = "hubUrl";
+
 export const RAVE_COLORS: Color[] = [
   [255, 0, 0],
   [255, 64, 0],

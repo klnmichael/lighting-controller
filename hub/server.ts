@@ -222,7 +222,18 @@ app.get("/", async (_, res) => {
 });
 
 app.get("/settings", async (_, res) => {
-  res.status(200).json({});
+  res.status(200).json({
+    cueTimestamp,
+    bpm,
+    sequence: queue.sequence || activeSequence,
+    sequenceColorMode: queue.sequenceColorMode || sequenceColorMode,
+    sequenceColor: queue.sequenceColor || sequenceColor,
+    sequenceDimming,
+    accent: queue.accent || activeAccent,
+    accentColorMode: queue.accentColorMode || accentColorMode,
+    accentColor: queue.accentColor || accentColor,
+    accentDimming,
+  });
 });
 
 app.post("/toggle", async (_, res) => {

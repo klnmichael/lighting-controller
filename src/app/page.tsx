@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Color } from "@/types/global";
-import { COLOR_MODES } from "@/lib/constants";
+import { COLOR_MODES, HUB_URL_STORAGE_KEY } from "@/lib/constants";
 import Map from "@/components/map";
 import RoomPreview from "@/components/room-preview";
 import type { RoomSceneHandle } from "@/components/room-scene";
@@ -54,7 +54,12 @@ export default function Home() {
   const gamepadNameRef = useRef("");
   const previousButtons = useRef<boolean[]>([]);
 
-  const fetchServerSettings = async () => {
+  const onHubUrlChange = (url: string) => {
+    setHubUrl(url);
+    window.localStorage.setItem(HUB_URL_STORAGE_KEY, url);
+  };
+
+  const fetchServerSettings = useCallback(async () => {
     if (hubUrl) {
       const settings: any = await fetch(`http://${hubUrl}/settings`, {
         method: "GET",
@@ -73,7 +78,7 @@ export default function Home() {
       setAccentColor(settings.accentColor);
       setAccentDimming(settings.accentDimming);
     }
-  };
+  }, [hubUrl]);
 
   const onToggle = () => {
     setSequence("");
@@ -364,8 +369,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchServerSettings();
+    const storedHubUrl = window.localStorage.getItem(HUB_URL_STORAGE_KEY);
+    if (storedHubUrl) setHubUrl(storedHubUrl);
   }, []);
+
+  useEffect(() => {
+    fetchServerSettings();
+  }, [fetchServerSettings]);
 
   return (
     <>
@@ -397,7 +407,7 @@ export default function Home() {
         accentDimming={accentDimming}
         gamepadName={gamepadName}
         lightbar={lightbar}
-        onHubUrlChange={setHubUrl}
+        onHubUrlChange={onHubUrlChange}
         onToggle={onToggle}
         onOpenPreview={onOpenPreview}
         onCue={onCue}
