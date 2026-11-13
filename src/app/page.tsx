@@ -70,6 +70,7 @@ export default function Home() {
         },
       }).then((res) => res.json());
       setCueTimestamp(settings.cueTimestamp);
+      setSeedShift(settings.seedShift);
       setBpm(settings.bpm);
       setSequence(settings.sequence);
       setSequenceColorMode(settings.sequenceColorMode);
@@ -127,8 +128,6 @@ export default function Home() {
 
   const onSequence = (timestamp: number, sequence: string) => {
     if (!cueTimestamp) setCueTimestamp(timestamp);
-    const seedShift = Math.round(Math.random() * 999);
-    setSeedShift(seedShift);
     setSequence(sequence);
     if (hubUrl)
       fetch(`http://${hubUrl}/sequence`, {
@@ -136,7 +135,7 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ timestamp, seedShift, sequence }),
+        body: JSON.stringify({ timestamp, sequence }),
       });
   };
 

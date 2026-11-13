@@ -102,7 +102,7 @@ const buildParams = (config: WizLight): WizLight => {
 };
 
 const loop = () => {
-  const time = Date.now();
+  const time = Date.now() + 120; // WIZ light delay 80 - 220ms
   const seed = Math.round((time - cueTimestamp) / (60000 / bpm) + seedShift);
   const beat = ((time - cueTimestamp) / (60000 / bpm)) % 16;
   const beatFloor = Math.floor(beat);
@@ -146,7 +146,10 @@ const loop = () => {
       sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
     }
     if (accentColorMode === COLOR_MODES[0]) {
-      accentColor = getSeededItem(ACCENT_COLORS, seed * 3);
+      accentColor = getSeededItem(
+        ACCENT_COLORS,
+        seed + ACCENT_COLORS.length / 2,
+      );
     }
   }
 
@@ -224,6 +227,7 @@ app.get("/", async (_, res) => {
 app.get("/settings", async (_, res) => {
   res.status(200).json({
     cueTimestamp,
+    seedShift,
     bpm,
     sequence: queue.sequence || activeSequence,
     sequenceColorMode: queue.sequenceColorMode || sequenceColorMode,
@@ -264,7 +268,6 @@ app.post("/sequence", async (req, res) => {
       queue.sequence = sequence;
     } else {
       cueTimestamp = timestamp;
-      seedShift = req.body.seedShift;
       activeSequence = sequence;
       runningSequence = sequence;
       startLoop();
