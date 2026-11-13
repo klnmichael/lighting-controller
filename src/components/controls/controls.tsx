@@ -99,6 +99,7 @@ export interface MapProps {
   onOpenPreview: () => void;
   onCue: (timestamp: number) => void;
   onBpm: (bpm: number) => void;
+  onBpmTap: () => void;
   onSequence: (timestamp: number, sequence: string) => void;
   onSequenceColorMode: (mode: string) => void;
   onSequenceColor: (color: Color) => void;
@@ -128,6 +129,7 @@ const Controls = ({
   onOpenPreview,
   onCue,
   onBpm,
+  onBpmTap,
   onSequence,
   onSequenceColorMode,
   onSequenceColor,
@@ -137,28 +139,7 @@ const Controls = ({
   onAccentColor,
   onAccentDimming,
 }: MapProps) => {
-  const resetTapTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const tapTimes = useRef<number[]>([]);
   const touchpadDialogRef = useRef<HTMLDialogElement>(null);
-
-  const onBpmTap = () => {
-    const currentTime = Date.now();
-    tapTimes.current.push(currentTime);
-    if (tapTimes.current.length > 16) tapTimes.current.shift();
-    if (tapTimes.current.length > 2) {
-      let totalInterval = 0;
-      for (let i = 1; i < tapTimes.current.length; i++) {
-        totalInterval += tapTimes.current[i] - tapTimes.current[i - 1];
-      }
-      const averageInterval = totalInterval / (tapTimes.current.length - 1);
-      const bpm = 60000 / averageInterval;
-      onBpm(Math.round(bpm));
-    }
-    if (resetTapTimeout.current) clearTimeout(resetTapTimeout.current);
-    resetTapTimeout.current = setTimeout(() => {
-      tapTimes.current = [];
-    }, 3000);
-  };
 
   const onBpmListen = async () => {
     const audioContext = new AudioContext();
@@ -213,7 +194,7 @@ const Controls = ({
                 full
               </p>
               <p>L1/R1: effects · L2/R2: sequence brightness</p>
-              <p>D-pad up/down: BPM · left/right: accent brightness</p>
+              <p>D-pad up/down: BPM · left: tap tempo</p>
               <p>
                 Left stick: sequence color · Right stick: accent color. Colors
                 run clockwise from up. Tilt to preview; center to apply. L3/R3:

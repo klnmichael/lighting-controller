@@ -12,6 +12,7 @@ import Controls from "@/components/controls";
 import Settings from "@/components/settings";
 import { useControllerLightbar } from "@/lib/use-controller-lightbar";
 import { JoystickColorSelection } from "@/lib/joystick-color";
+import { TapTempo } from "@/lib/tap-tempo";
 
 const GAMEPAD_SEQUENCES = ["random", "dark", "full", "flash", ...sequenceOrder];
 
@@ -53,6 +54,7 @@ export default function Home() {
   const [gamepadName, setGamepadName] = useState("");
   const gamepadNameRef = useRef("");
   const previousButtons = useRef<boolean[]>([]);
+  const tapTempo = useRef(new TapTempo());
 
   const onHubUrlChange = (url: string) => {
     setHubUrl(url);
@@ -116,6 +118,11 @@ export default function Home() {
         },
         body: JSON.stringify({ bpm }),
       });
+  };
+
+  const onBpmTap = () => {
+    const tappedBpm = tapTempo.current.tap();
+    if (tappedBpm !== null) onBpm(tappedBpm);
   };
 
   const onSequence = (timestamp: number, sequence: string) => {
@@ -234,6 +241,7 @@ export default function Home() {
     onAccent,
     onJoystickPreview: lightbar.onJoystickPreview,
     onBpm,
+    onBpmTap,
     onSequenceDimming,
     onAccentDimming,
     sequence,
@@ -252,6 +260,7 @@ export default function Home() {
     onAccent,
     onJoystickPreview: lightbar.onJoystickPreview,
     onBpm,
+    onBpmTap,
     onSequenceDimming,
     onAccentDimming,
     sequence,
@@ -350,8 +359,7 @@ export default function Home() {
         }
         if (justPressed(12)) actions.onBpm(actions.bpm + 1);
         if (justPressed(13)) actions.onBpm(Math.max(1, actions.bpm - 1));
-        if (justPressed(14)) {
-        }
+        if (justPressed(14)) actions.onBpmTap();
         if (justPressed(15)) {
         }
 
@@ -412,6 +420,7 @@ export default function Home() {
         onOpenPreview={onOpenPreview}
         onCue={onCue}
         onBpm={onBpm}
+        onBpmTap={onBpmTap}
         onSequence={onSequence}
         onSequenceColorMode={onSequenceColorMode}
         onSequenceColor={onSequenceColor}
