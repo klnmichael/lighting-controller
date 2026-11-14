@@ -18,6 +18,8 @@ import Settings from "@/components/settings";
 import { useControllerLightbar } from "@/lib/use-controller-lightbar";
 import { JoystickColorSelection } from "@/lib/joystick-color";
 import { TapTempo } from "@/lib/tap-tempo";
+import { useHub } from "@/lib/use-hub";
+import type { HubSnapshot } from "@/lib/hub-protocol";
 import {
   createLightingLoopState,
   getActiveLighting,
@@ -68,6 +70,7 @@ export default function Home() {
   );
 
   const [hubUrl, setHubUrl] = useState("");
+  const [hubSnapshot, setHubSnapshot] = useState<HubSnapshot | null>(null);
   const [gamepadName, setGamepadName] = useState("");
   const gamepadNameRef = useRef("");
   const previousButtons = useRef<boolean[]>([]);
@@ -75,68 +78,43 @@ export default function Home() {
 
   const onHubUrlChange = (url: string) => {
     setHubUrl(url);
+    setHubSnapshot(null);
     window.localStorage.setItem(HUB_URL_STORAGE_KEY, url);
   };
 
-  const fetchServerSettings = useCallback(async () => {
-    if (hubUrl) {
-      const settings: any = await fetch(`http://${hubUrl}/settings`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }).then((res) => res.json());
-      setCueTimestamp(settings.cueTimestamp);
-      setSeedShift(settings.seedShift);
-      setBpm(settings.bpm);
-      setSequence(settings.sequence);
-      setSequenceColorMode(settings.sequenceColorMode);
-      setSequenceColor(settings.sequenceColor);
-      setSequenceDimming(settings.sequenceDimming);
-      setAccent(settings.accent);
-      setAccentColorMode(settings.accentColorMode);
-      setAccentColor(settings.accentColor);
-      setAccentDimming(settings.accentDimming);
-    }
-  }, [hubUrl]);
+  const onHubSnapshot = useCallback((snapshot: HubSnapshot) => {
+    const state = snapshot.lighting;
+    setHubSnapshot(snapshot);
+    setCueTimestamp(state.cueTimestamp);
+    setSeedShift(state.seedShift);
+    setBpm(state.bpm);
+    setSequence(state.queue.sequence ?? state.activeSequence);
+    setSequenceColorMode(state.queue.sequenceColorMode ?? state.sequenceColorMode);
+    setSequenceColor(state.queue.sequenceColor ?? state.sequenceColor);
+    setSequenceDimming(state.sequenceDimming);
+    setAccent(state.queue.accent ?? state.activeAccent);
+    setAccentColorMode(state.queue.accentColorMode ?? state.accentColorMode);
+    setAccentColor(state.queue.accentColor ?? state.accentColor);
+    setAccentDimming(state.accentDimming);
+  }, []);
+  const hub = useHub(hubUrl, onHubSnapshot);
 
   const onToggle = () => {
+    if (hubUrl && !hub.send({ type: "toggle" })) return;
     setSequence("");
     setCueTimestamp(0);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/toggle`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      });
   };
 
   const onCue = (timestamp: number) => {
-    setCueTimestamp(timestamp);
     const seedShift = Math.round(Math.random() * 999);
+    if (hubUrl && !hub.send({ type: "cue", seedShift })) return;
+    setCueTimestamp(timestamp);
     setSeedShift(seedShift);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/cue`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ timestamp, seedShift }),
-      });
   };
 
   const onBpm = (bpm: number) => {
+    if (hubUrl && !hub.send({ type: "bpm", bpm })) return;
     setBpm(bpm);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/bpm`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ bpm }),
-      });
   };
 
   const onBpmTap = () => {
@@ -145,88 +123,39 @@ export default function Home() {
   };
 
   const onSequence = (timestamp: number, sequence: string) => {
+    if (hubUrl && !hub.send({ type: "sequence", sequence })) return;
     if (!cueTimestamp) setCueTimestamp(timestamp);
     setSequence(sequence);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/sequence`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ timestamp, sequence }),
-      });
   };
 
   const onSequenceColorMode = (sequenceColorMode: string) => {
+    if (hubUrl && !hub.send({ type: "sequenceColorMode", value: sequenceColorMode })) return;
     setSequenceColorMode(sequenceColorMode);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sequenceColorMode }),
-      });
   };
 
   const onSequenceColor = (sequenceColor: Color) => {
+    if (hubUrl && !hub.send({ type: "sequenceColor", value: sequenceColor })) return;
     setSequenceColor(sequenceColor);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sequenceColor }),
-      });
   };
 
   const onSequenceDimming = (sequenceDimming: number) => {
+    if (hubUrl && !hub.send({ type: "sequenceDimming", value: sequenceDimming })) return;
     setSequenceDimming(sequenceDimming);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/dimming`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sequenceDimming }),
-      });
   };
 
   const onAccent = (accent: string) => {
+    if (hubUrl && !hub.send({ type: "accent", value: accent })) return;
     setAccent(accent);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ accent }),
-      });
   };
 
   const onAccentColorMode = (accentColorMode: string) => {
+    if (hubUrl && !hub.send({ type: "accentColorMode", value: accentColorMode })) return;
     setAccentColorMode(accentColorMode);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ accentColorMode }),
-      });
   };
 
   const onAccentColor = (accentColor: Color) => {
+    if (hubUrl && !hub.send({ type: "accentColor", value: accentColor })) return;
     setAccentColor(accentColor);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ accentColor }),
-      });
   };
 
   const lightbar = useControllerLightbar(
@@ -236,15 +165,8 @@ export default function Home() {
   );
 
   const onAccentDimming = (accentDimming: number) => {
+    if (hubUrl && !hub.send({ type: "accentDimming", value: accentDimming })) return;
     setAccentDimming(accentDimming);
-    if (hubUrl)
-      fetch(`http://${hubUrl}/dimming`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ accentDimming }),
-      });
   };
 
   const gamepadActions = useRef({
@@ -457,10 +379,6 @@ export default function Home() {
     if (storedHubUrl) setHubUrl(storedHubUrl);
   }, []);
 
-  useEffect(() => {
-    fetchServerSettings();
-  }, [fetchServerSettings]);
-
   return (
     <>
       <Map
@@ -475,12 +393,16 @@ export default function Home() {
         accentColorMode={accentColorMode}
         accentColor={accentColor}
         accentDimming={accentDimming}
+        hubSnapshot={hubUrl ? hubSnapshot : null}
+        clockOffset={hub.clockOffset}
         onLightsChange={onLightsChange}
         onActiveLightingChange={setActiveLighting}
       />
       <Controls
         activeLighting={activeLighting}
         hubUrl={hubUrl}
+        hubStatus={hub.status}
+        hubConnectionState={hub.connectionState}
         cueTimestamp={cueTimestamp}
         bpm={bpm}
         sequence={sequence}

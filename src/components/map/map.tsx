@@ -13,6 +13,7 @@ import {
 } from "@/lib/lighting-loop";
 import { LIGHT_POSITIONS, ROOM_OUTLINE } from "@/lib/room-layout";
 import { createLights, type LightState } from "@/lib/lights";
+import type { HubSnapshot } from "@/lib/hub-protocol";
 import styles from "./map.module.scss";
 
 export interface MapProps {
@@ -27,6 +28,8 @@ export interface MapProps {
   accentColorMode: string;
   accentColor: Color;
   accentDimming: number;
+  hubSnapshot: HubSnapshot | null;
+  clockOffset: number;
   onLightsChange: (lights: LightState[]) => void;
   onActiveLightingChange: (lighting: ActiveLighting) => void;
 }
@@ -43,6 +46,8 @@ const Map = ({
   accentColorMode,
   accentColor,
   accentDimming,
+  hubSnapshot,
+  clockOffset,
   onLightsChange,
   onActiveLightingChange,
 }: MapProps) => {
@@ -56,6 +61,10 @@ const Map = ({
   const lightRefs = useRef<(HTMLDivElement | null)[]>([]);
   const onLightsChangeRef = useRef(onLightsChange);
   const onActiveLightingChangeRef = useRef(onActiveLightingChange);
+  const clockOffsetRef = useRef(clockOffset);
+  clockOffsetRef.current = clockOffset;
+  const hubSnapshotRef = useRef(hubSnapshot);
+  hubSnapshotRef.current = hubSnapshot;
 
   useEffect(() => {
     onLightsChangeRef.current = onLightsChange;
@@ -83,7 +92,11 @@ const Map = ({
 
   const loop = () => {
     const queue = lighting.current.queue;
-    const lightMap = advanceLightingLoop(lighting.current);
+    const lightMap = advanceLightingLoop(
+      lighting.current,
+      Date.now() + (hubSnapshotRef.current ? clockOffsetRef.current : 0),
+      hubSnapshotRef.current ? 120 : 0,
+    );
     if (!lightMap) return;
     if (queue !== lighting.current.queue) {
       onActiveLightingChangeRef.current(getActiveLighting(lighting.current));
@@ -159,6 +172,19 @@ const Map = ({
   useEffect(() => {
     lighting.current.accentDimming = accentDimming;
   }, [accentDimming]);
+
+  useEffect(() => {
+    if (!hubSnapshot) return;
+    lighting.current = {
+      ...hubSnapshot.lighting,
+      queue: { ...hubSnapshot.lighting.queue },
+      currentBeat: -1,
+      currentTick: -1,
+    };
+    if (lighting.current.activeSequence) startLoop();
+    else stopLoop();
+    onActiveLightingChangeRef.current(getActiveLighting(lighting.current));
+  }, [hubSnapshot]);
 
   return (
     <section className={styles.container} aria-label="2D lighting map">

@@ -1,74 +1,114 @@
+import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import cors from "cors";
-import ip from "ip";
+import { WebSocket, WebSocketServer } from "ws";
 import { createWizSender } from "./wiz-sender.ts";
 import type { WizLight } from "../src/types/global.ts";
+import { isHubCommand, type HubCommand } from "../src/lib/hub-protocol.ts";
 import {
   advanceLightingLoop,
   createLightingLoopState,
   queueLightingUpdate,
 } from "../src/lib/lighting-loop.ts";
 
+const token = process.env.HUB_TOKEN;
+const allowedOrigins = (process.env.HUB_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+if (allowedOrigins.length === 0 || (token !== undefined && token.length < 32)) {
+  throw new Error("Set HUB_ALLOWED_ORIGINS and, if using HTTP endpoints, a HUB_TOKEN of at least 32 characters.");
+}
+
+const authorized = (candidate: unknown): boolean => {
+  if (!token || typeof candidate !== "string") return false;
+  const expected = Buffer.from(token);
+  const actual = Buffer.from(candidate);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+};
+const originAllowed = (origin: string | undefined) =>
+  !origin || allowedOrigins.includes(origin);
+
 const app = express();
 const wizSender = createWizSender();
-
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 const lighting = createLightingLoopState();
+const sockets = new Set<WebSocket>();
+let loopInterval: ReturnType<typeof setInterval> | undefined;
 
-let loopInterval: ReturnType<typeof setInterval> | undefined = undefined;
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, originAllowed(origin));
+  },
+}));
+app.use(express.json({ limit: "8kb" }));
+app.use((req, res, next) => {
+  if (!originAllowed(req.headers.origin)) {
+    res.status(403).json({ error: "Origin not allowed" });
+    return;
+  }
+  if (!token) {
+    res.status(503).json({ error: "HTTP access is disabled; configure HUB_TOKEN" });
+    return;
+  }
+  const authorization = req.headers.authorization;
+  if (!authorization?.startsWith("Bearer ") || !authorized(authorization.slice(7))) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  next();
+});
+
+const snapshot = () => JSON.stringify({ type: "state", lighting });
+const broadcast = () => {
+  const message = snapshot();
+  for (const socket of sockets) {
+    if (socket.readyState === WebSocket.OPEN) socket.send(message);
+  }
+};
 
 const buildParams = (config: WizLight): WizLight => {
-  const params: WizLight = {
-    // state: true,
-    // speed: 0,
-    // fade: 0,
-    // "fade-in": 0,
-    // "fade-out": 0,
-  };
-
-  if (config.state !== undefined) {
-    params.state = config.state;
-  }
-
-  if (config.dimming !== undefined) {
-    params.dimming = 100 - config.dimming * 100;
-  }
-
+  const params: WizLight = {};
+  if (config.state !== undefined) params.state = config.state;
+  if (config.dimming !== undefined) params.dimming = 100 - config.dimming * 100;
   if (config.color) {
-    params.r = config.color[0];
-    params.g = config.color[1];
-    params.b = config.color[2];
-    if (
-      config.color.reduce(
-        (accumulator: number, currentValue: number) =>
-          accumulator + currentValue,
-        0,
-      ) ===
-      255 * 3
-    ) {
-      // params.temp = 5000;
+    [params.r, params.g, params.b] = config.color;
+    if (config.color.reduce((sum, channel) => sum + channel, 0) === 255 * 3) {
       if (params.dimming) params.dimming *= 0.75;
     }
   }
-
-  // if (params.dimming === 0) {
-  //   params.r = 255;
-  //   params.g = 0;
-  //   params.b = 0;
-  // }
-
   return params;
 };
 
 const loop = () => {
+  const before = JSON.stringify({
+    activeSequence: lighting.activeSequence,
+    runningSequence: lighting.runningSequence,
+    activeAccent: lighting.activeAccent,
+    runningAccent: lighting.runningAccent,
+    sequenceColorMode: lighting.sequenceColorMode,
+    sequenceColor: lighting.sequenceColor,
+    accentColorMode: lighting.accentColorMode,
+    accentColor: lighting.accentColor,
+    queue: lighting.queue,
+  });
   const lightMap = advanceLightingLoop(lighting, Date.now(), 120);
   if (!lightMap) return;
   for (const [ip, config] of Object.entries(lightMap)) {
     wizSender.update(Number(ip), buildParams(config));
   }
+  const after = JSON.stringify({
+    activeSequence: lighting.activeSequence,
+    runningSequence: lighting.runningSequence,
+    activeAccent: lighting.activeAccent,
+    runningAccent: lighting.runningAccent,
+    sequenceColorMode: lighting.sequenceColorMode,
+    sequenceColor: lighting.sequenceColor,
+    accentColorMode: lighting.accentColorMode,
+    accentColor: lighting.accentColor,
+    queue: lighting.queue,
+  });
+  if (before !== after) broadcast();
 };
 
 const startLoop = () => {
@@ -79,122 +119,167 @@ const startLoop = () => {
     loopInterval = setInterval(loop, 1000 / 60);
   }
 };
-
 const stopLoop = () => {
-  if (loopInterval) {
-    clearInterval(loopInterval);
-    loopInterval = undefined;
-  }
+  if (loopInterval) clearInterval(loopInterval);
+  loopInterval = undefined;
   wizSender.clearPending();
 };
 
-app.get("/", async (_, res) => {
-  res.status(200).send(`${ip.address()}:${process.env.HUB_PORT}`);
-});
+const applyCommand = (command: HubCommand) => {
+  switch (command.type) {
+    case "toggle":
+      stopLoop();
+      lighting.cueTimestamp = 0;
+      lighting.activeSequence = "";
+      lighting.runningSequence = "";
+      delete lighting.queue.sequence;
+      break;
+    case "cue":
+      lighting.cueTimestamp = Date.now();
+      lighting.seedShift = command.seedShift;
+      break;
+    case "bpm":
+      lighting.bpm = command.bpm;
+      break;
+    case "sequence":
+      if (command.sequence) {
+        if (lighting.activeSequence && command.sequence !== lighting.activeSequence) {
+          queueLightingUpdate(lighting, { sequence: command.sequence });
+        } else {
+          delete lighting.queue.sequence;
+          lighting.cueTimestamp = Date.now();
+          lighting.activeSequence = command.sequence;
+          lighting.runningSequence = command.sequence;
+          startLoop();
+        }
+      } else {
+        stopLoop();
+        lighting.activeSequence = "";
+        lighting.runningSequence = "";
+        delete lighting.queue.sequence;
+      }
+      break;
+    case "sequenceDimming":
+      lighting.sequenceDimming = command.value;
+      break;
+    case "accentDimming":
+      lighting.accentDimming = command.value;
+      break;
+    default:
+      queueLightingUpdate(lighting, { [command.type]: command.value });
+  }
+  broadcast();
+};
 
-app.get("/settings", async (_, res) => {
-  res.status(200).json({
+app.get("/settings", (_req, res) => {
+  res.json({
     cueTimestamp: lighting.cueTimestamp,
     seedShift: lighting.seedShift,
     bpm: lighting.bpm,
-    sequence: lighting.queue.sequence || lighting.activeSequence,
-    sequenceColorMode:
-      lighting.queue.sequenceColorMode || lighting.sequenceColorMode,
-    sequenceColor: lighting.queue.sequenceColor || lighting.sequenceColor,
+    sequence: lighting.queue.sequence ?? lighting.activeSequence,
+    sequenceColorMode: lighting.queue.sequenceColorMode ?? lighting.sequenceColorMode,
+    sequenceColor: lighting.queue.sequenceColor ?? lighting.sequenceColor,
     sequenceDimming: lighting.sequenceDimming,
-    accent: lighting.queue.accent || lighting.activeAccent,
-    accentColorMode: lighting.queue.accentColorMode || lighting.accentColorMode,
-    accentColor: lighting.queue.accentColor || lighting.accentColor,
+    accent: lighting.queue.accent ?? lighting.activeAccent,
+    accentColorMode: lighting.queue.accentColorMode ?? lighting.accentColorMode,
+    accentColor: lighting.queue.accentColor ?? lighting.accentColor,
     accentDimming: lighting.accentDimming,
   });
 });
 
-app.post("/toggle", async (_, res) => {
-  stopLoop();
-  lighting.cueTimestamp = 0;
-  lighting.activeSequence = "";
-  lighting.runningSequence = "";
-  res.status(200).json({});
-});
-
-app.post("/cue", async (req, res) => {
-  console.log(req.body);
-  lighting.cueTimestamp = req.body.timestamp;
-  lighting.seedShift = req.body.seedShift;
-  res.status(200).json({});
-});
-
-app.post("/bpm", async (req, res) => {
-  console.log(req.body);
-  lighting.bpm = req.body.bpm;
-  res.status(200).json({});
-});
-
-app.post("/sequence", async (req, res) => {
-  console.log(req.body);
-  const { timestamp, sequence } = req.body;
-  if (sequence) {
-    if (lighting.activeSequence && sequence !== lighting.activeSequence) {
-      queueLightingUpdate(lighting, { sequence });
-    } else {
-      lighting.cueTimestamp = timestamp;
-      lighting.activeSequence = sequence;
-      lighting.runningSequence = sequence;
-      startLoop();
-    }
-  } else {
-    stopLoop();
-    lighting.activeSequence = "";
-    lighting.runningSequence = "";
+// Keep the existing HTTP endpoints available to authenticated integrations.
+app.post(["/toggle", "/cue", "/bpm", "/sequence", "/update", "/dimming"], (req, res) => {
+  const body: Record<string, unknown> = req.body ?? {};
+  let candidates: unknown[];
+  switch (req.path) {
+    case "/toggle": candidates = [{ type: "toggle" }]; break;
+    case "/cue": candidates = [{ type: "cue", seedShift: body.seedShift }]; break;
+    case "/bpm": candidates = [{ type: "bpm", bpm: body.bpm }]; break;
+    case "/sequence": candidates = [{ type: "sequence", sequence: body.sequence }]; break;
+    default:
+      candidates = Object.entries(body).map(([type, value]) => ({ type, value }));
   }
-  res.status(200).json({});
+  if (candidates.length === 0 || !candidates.every(isHubCommand)) {
+    res.status(400).json({ error: "Invalid command" });
+    return;
+  }
+  for (const command of candidates) {
+    if (isHubCommand(command)) applyCommand(command);
+  }
+  res.json({});
 });
 
-app.post("/update", async (req, res) => {
-  console.log(req.body);
-  const {
-    sequenceColorMode,
-    sequenceColor,
-    accent,
-    accentColorMode,
-    accentColor,
-  } = req.body;
-  queueLightingUpdate(lighting, {
-    sequenceColorMode,
-    sequenceColor,
-    accent,
-    accentColorMode,
-    accentColor,
+const server = app.listen(Number(process.env.HUB_PORT ?? 3000), process.env.HUB_HOST ?? "0.0.0.0", () => {
+  const address = server.address();
+  console.log(`Hub listening on ${typeof address === "object" && address ? `${address.address}:${address.port}` : address}`);
+});
+const websocketServer = new WebSocketServer({ noServer: true, maxPayload: 8192 });
+const aliveSockets = new WeakSet<WebSocket>();
+server.on("upgrade", (request, socket, head) => {
+  if (request.url !== "/sync" || !originAllowed(request.headers.origin)) {
+    socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+    socket.destroy();
+    return;
+  }
+  websocketServer.handleUpgrade(request, socket, head, (ws) => {
+    websocketServer.emit("connection", ws, request);
   });
-  res.status(200).json({});
 });
 
-app.post("/dimming", async (req, res) => {
-  const {
-    sequenceDimming: updatedSequenceDimming,
-    accentDimming: updatedAccentDimming,
-  } = req.body;
-  if (updatedSequenceDimming || updatedSequenceDimming === 0)
-    lighting.sequenceDimming = updatedSequenceDimming;
-  if (updatedAccentDimming || updatedAccentDimming === 0)
-    lighting.accentDimming = updatedAccentDimming;
-  res.status(200).json({});
+websocketServer.on("connection", (socket) => {
+  aliveSockets.add(socket);
+  socket.on("pong", () => aliveSockets.add(socket));
+  socket.on("error", (error) => console.error("WebSocket error:", error));
+  socket.on("close", () => {
+    sockets.delete(socket);
+  });
+  sockets.add(socket);
+  socket.send(snapshot());
+  socket.on("message", (data, isBinary) => {
+    if (isBinary) {
+      socket.close(1003, "Text messages only");
+      return;
+    }
+    let message: unknown;
+    try {
+      message = JSON.parse(data.toString());
+    } catch {
+      socket.close(1007, "Invalid JSON");
+      return;
+    }
+    if (!message || typeof message !== "object") {
+      socket.close(1008, "Invalid message");
+      return;
+    }
+    const record = message as Record<string, unknown>;
+    if (record.type === "ping" && typeof record.clientTime === "number" && Number.isFinite(record.clientTime)) {
+      socket.send(JSON.stringify({ type: "pong", clientTime: record.clientTime, serverTime: Date.now() }));
+    } else if (isHubCommand(message)) {
+      applyCommand(message);
+    } else {
+      socket.send(JSON.stringify({ type: "error", message: "Invalid command", lighting }));
+    }
+  });
 });
 
-const server = app.listen(process.env.HUB_PORT, () => {
-  console.log(`${ip.address()}:${process.env.HUB_PORT}`);
-});
-
-server.on("close", () => {
-  stopLoop();
-  wizSender.close();
-});
+const heartbeat = setInterval(() => {
+  for (const socket of websocketServer.clients) {
+    if (!aliveSockets.has(socket)) {
+      socket.terminate();
+    } else {
+      aliveSockets.delete(socket);
+      socket.ping();
+    }
+  }
+}, 30000);
 
 const shutdown = () => {
+  clearInterval(heartbeat);
   stopLoop();
   wizSender.close();
+  for (const socket of websocketServer.clients) socket.terminate();
+  websocketServer.close();
   server.close();
 };
-
 process.once("SIGINT", shutdown);
 process.once("SIGTERM", shutdown);

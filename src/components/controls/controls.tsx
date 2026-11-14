@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { createRealtimeBpmAnalyzer } from "realtime-bpm-analyzer";
 import type { Color } from "@/types/global";
 import type { useControllerLightbar } from "@/lib/use-controller-lightbar";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/constants";
 import { TOUCHPAD_SEQUENCES } from "@/lib/dualsense-touchpad";
 import type { ActiveLighting } from "@/lib/lighting-loop";
+import type { HubConnectionState } from "@/lib/use-hub";
 import packageJson from "../../../package.json";
 import Button from "@/components/button";
 import Count from "@/components/count";
@@ -98,6 +99,8 @@ const CONTROLLER_MAP_LABELS = [
 export interface ControlsProps {
   activeLighting: ActiveLighting;
   hubUrl: string;
+  hubStatus: string;
+  hubConnectionState: HubConnectionState;
   cueTimestamp: number;
   bpm: number;
   sequence?: string;
@@ -130,6 +133,8 @@ export interface ControlsProps {
 const Controls = ({
   activeLighting,
   hubUrl,
+  hubStatus,
+  hubConnectionState,
   cueTimestamp,
   bpm,
   sequence,
@@ -158,6 +163,7 @@ const Controls = ({
   onAccentColor,
   onAccentDimming,
 }: ControlsProps) => {
+  const hubStatusId = useId();
   const controllerDialogRef = useRef<HTMLDialogElement>(null);
   const applied = sequence
     ? activeLighting
@@ -230,13 +236,24 @@ const Controls = ({
         <div className={styles.temp}>
           <label className={styles.hubUrl}>
             v.{packageJson.version}
-            <input
-              type="url"
-              value={hubUrl}
-              placeholder="192.168.0.0:3000"
-              onChange={(e) => onHubUrlChange(e.target.value)}
-            />
+            <span
+              className={styles.hubInput}
+              data-connection={hubConnectionState}
+            >
+              <input
+                type="url"
+                value={hubUrl}
+                placeholder="0.0.0.0:3001"
+                aria-label="Hub URL"
+                aria-describedby={hubStatusId}
+                title={hubStatus}
+                onChange={(e) => onHubUrlChange(e.target.value)}
+              />
+            </span>
           </label>
+          <span id={hubStatusId} className={styles.hubStatus} role="status">
+            {hubStatus}
+          </span>
           <details className={styles.gamepad}>
             <summary>{gamepadName ? gamepadName : "PS5 Controller"}</summary>
             <div>
