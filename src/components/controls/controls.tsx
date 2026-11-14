@@ -101,8 +101,8 @@ const CONTROLLER_MAP_LABELS = [
     top: "5.7%",
   },
   {
-    text: "L2 Dim-",
-    title: "L2: lower sequence brightness",
+    text: "L2 Color",
+    title: "Hold L2: use the joysticks to select sequence and accent colors",
     left: "20%",
     top: "5%",
   },
@@ -135,8 +135,8 @@ const CONTROLLER_MAP_LABELS = [
   },
   { text: "R1 Next", title: "R1: next sequence", left: "73.7%", top: "5.7%" },
   {
-    text: "R2 Dim+",
-    title: "R2: raise sequence brightness",
+    text: "R2 Bright",
+    title: "Hold R2: left stick adjusts sequence brightness; right stick adjusts accent brightness",
     left: "80%",
     top: "5%",
   },
@@ -267,14 +267,17 @@ const Controls = ({
                 accent · Triangle: dark
               </p>
               <p>
-                L1/R1: previous/next sequence · L2/R2: sequence brightness
-                down/up
+                L1/R1: previous/next sequence · Hold L2: joystick color picker
+                · Hold R2: joystick brightness adjustment
               </p>
               <p>D-pad up/down: BPM up/down · left: tap tempo</p>
               <p>
-                Left stick: sequence color · Right stick: accent color. Colors
-                run clockwise from up. Tilt to preview; center to apply. L3/R3:
-                random sequence/accent colors.
+                While holding L2, left stick selects sequence color and right
+                stick selects accent color. Colors run clockwise from up; tilt
+                to preview and center to apply. While holding R2, move the left
+                stick up/down for sequence brightness and the right stick
+                up/down for accent brightness. L3/R3: random sequence/accent
+                colors.
               </p>
               <p>
                 Touchpad (with sync): top row selects{" "}

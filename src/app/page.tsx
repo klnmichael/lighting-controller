@@ -278,7 +278,15 @@ export default function Home() {
     let leftStick = new JoystickColorSelection(SEQUENCE_COLORS);
     let rightStick = new JoystickColorSelection(ACCENT_COLORS);
     let controllerKey = "";
-    const pollGamepad = () => {
+    let colorPickerEnabled = false;
+    let previousFrameTimestamp = 0;
+    let brightnessUpdateElapsed = 0;
+    const pollGamepad = (timestamp: number) => {
+      const deltaSeconds =
+        previousFrameTimestamp === 0
+          ? 0
+          : Math.min((timestamp - previousFrameTimestamp) / 1000, 0.05);
+      previousFrameTimestamp = timestamp;
       const gamepad = Array.from(navigator.getGamepads()).find(
         (candidate) => candidate?.connected && candidate.mapping === "standard",
       );
@@ -287,6 +295,7 @@ export default function Home() {
         controllerKey = nextKey;
         leftStick = new JoystickColorSelection(SEQUENCE_COLORS);
         rightStick = new JoystickColorSelection(ACCENT_COLORS);
+        colorPickerEnabled = false;
         previousButtons.current = [];
         gamepadActions.current.onJoystickPreview(null);
       }
@@ -307,6 +316,15 @@ export default function Home() {
         const justPressed = (index: number) =>
           pressed[index] && !wasPressed[index];
 
+        const colorPickerActive = Boolean(pressed[6]);
+        const brightnessActive = Boolean(pressed[7] && !pressed[6]);
+        if (colorPickerActive !== colorPickerEnabled) {
+          colorPickerEnabled = colorPickerActive;
+          leftStick = new JoystickColorSelection(SEQUENCE_COLORS);
+          rightStick = new JoystickColorSelection(ACCENT_COLORS);
+          if (!colorPickerActive) actions.onJoystickPreview(null);
+        }
+
         if (justPressed(0)) actions.onToggle();
         if (justPressed(1)) actions.onCue(Date.now());
         if (justPressed(2)) {
@@ -318,24 +336,64 @@ export default function Home() {
         if (justPressed(10)) actions.onSequenceColorMode(COLOR_MODES[0]);
         if (justPressed(11)) actions.onAccentColorMode(COLOR_MODES[0]);
 
-        const left = leftStick.update(
-          gamepad.axes[0] ?? 0,
-          gamepad.axes[1] ?? 0,
-          Boolean(pressed[10] || pressed[17]),
-        );
-        const right = rightStick.update(
-          gamepad.axes[2] ?? 0,
-          gamepad.axes[3] ?? 0,
-          Boolean(pressed[11]),
-        );
-        actions.onJoystickPreview(right.preview ?? left.preview);
-        if (left.selected) {
-          actions.onSequenceColorMode(COLOR_MODES[2]);
-          actions.onSequenceColor(left.selected);
+        const leftX = gamepad.axes[0] ?? 0;
+        const leftY = gamepad.axes[1] ?? 0;
+        const rightX = gamepad.axes[2] ?? 0;
+        const rightY = gamepad.axes[3] ?? 0;
+        if (colorPickerActive) {
+          const left = leftStick.update(
+            leftX,
+            leftY,
+            Boolean(pressed[10] || pressed[17]),
+          );
+          const right = rightStick.update(
+            rightX,
+            rightY,
+            Boolean(pressed[11]),
+          );
+          actions.onJoystickPreview(right.preview ?? left.preview);
+          if (left.selected) {
+            actions.onSequenceColorMode(COLOR_MODES[2]);
+            actions.onSequenceColor(left.selected);
+          }
+          if (right.selected) {
+            actions.onAccentColorMode(COLOR_MODES[2]);
+            actions.onAccentColor(right.selected);
+          }
         }
-        if (right.selected) {
-          actions.onAccentColorMode(COLOR_MODES[2]);
-          actions.onAccentColor(right.selected);
+
+        const isAdjustingBrightness =
+          brightnessActive &&
+          (Math.abs(leftY) > 0.15 || Math.abs(rightY) > 0.15);
+        if (isAdjustingBrightness) {
+          brightnessUpdateElapsed += deltaSeconds;
+        } else {
+          brightnessUpdateElapsed = 0;
+        }
+        if (isAdjustingBrightness && brightnessUpdateElapsed >= 0.08) {
+          const brightnessDelta = (axis: number) =>
+            Math.abs(axis) > 0.15 ? -axis * brightnessUpdateElapsed * 0.6 : 0;
+          const sequenceDelta = brightnessDelta(leftY);
+          const accentDelta = brightnessDelta(rightY);
+          brightnessUpdateElapsed = 0;
+          if (sequenceDelta !== 0) {
+            const nextDimming = Math.min(
+              1,
+              Math.max(0, actions.sequenceDimming + sequenceDelta),
+            );
+            if (nextDimming !== actions.sequenceDimming) {
+              actions.onSequenceDimming(nextDimming);
+            }
+          }
+          if (accentDelta !== 0) {
+            const nextDimming = Math.min(
+              1,
+              Math.max(0, actions.accentDimming + accentDelta),
+            );
+            if (nextDimming !== actions.accentDimming) {
+              actions.onAccentDimming(nextDimming);
+            }
+          }
         }
 
         const changeSequence = (direction: number) => {
@@ -351,16 +409,6 @@ export default function Home() {
         };
         if (justPressed(4)) changeSequence(-1);
         if (justPressed(5)) changeSequence(1);
-        if (justPressed(6)) {
-          actions.onSequenceDimming(
-            Math.max(0, actions.sequenceDimming - 0.05),
-          );
-        }
-        if (justPressed(7)) {
-          actions.onSequenceDimming(
-            Math.min(1, actions.sequenceDimming + 0.05),
-          );
-        }
         if (justPressed(12)) actions.onBpm(actions.bpm + 1);
         if (justPressed(13)) actions.onBpm(Math.max(1, actions.bpm - 1));
         if (justPressed(14)) actions.onBpmTap();
