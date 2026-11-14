@@ -165,15 +165,18 @@ export function advanceLightingLoop(
     }
     sequenceTimelineData.forEach((data) => {
       [...(data.ips || IPS)].forEach((ip: number) => {
+        const dimming = data.randomDimming
+          ? Math.random() *
+              (data.randomDimming[1] - data.randomDimming[0]) +
+            data.randomDimming[0]
+          : data.dimming;
         lightMap[ip] = {
-          dimming: data.dimming,
+          dimming:
+            dimming === undefined
+              ? undefined
+              : 1 - (1 - dimming) * state.sequenceDimming,
           color: state.sequenceColor,
         };
-        if (data.randomDimming) {
-          lightMap[ip].dimming =
-            Math.random() * (data.randomDimming[1] - data.randomDimming[0]) +
-            data.randomDimming[0];
-        }
       });
     });
   }
@@ -192,7 +195,10 @@ export function advanceLightingLoop(
     accentTimelineData.forEach((data) => {
       data.ips?.forEach((ip: number) => {
         lightMap[ip] ??= {};
-        lightMap[ip].dimming = data.dimming + (1 - state.accentDimming);
+        lightMap[ip].dimming = Math.min(
+          1,
+          data.dimming + (1 - state.accentDimming),
+        );
         lightMap[ip].color = state.accentColor;
       });
     });

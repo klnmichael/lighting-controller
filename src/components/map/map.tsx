@@ -63,7 +63,7 @@ const Map = ({
     const light = lights.current[IPS.indexOf(ip)];
     if (config.color) light.color = config.color;
     if (config.dimming !== undefined) {
-      light.brightness = (1 - config.dimming) * lighting.current.sequenceDimming;
+      light.brightness = 1 - config.dimming;
     }
     const element = lightRefs.current[IPS.indexOf(ip)];
     if (element) {

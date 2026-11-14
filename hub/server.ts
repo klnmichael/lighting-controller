@@ -34,8 +34,7 @@ const buildParams = (config: WizLight): WizLight => {
   }
 
   if (config.dimming !== undefined) {
-    params.dimming =
-      (100 - config.dimming * 100) * lighting.sequenceDimming;
+    params.dimming = 100 - config.dimming * 100;
   }
 
   if (config.color) {
@@ -50,9 +49,15 @@ const buildParams = (config: WizLight): WizLight => {
       ) ===
       255 * 3
     ) {
-      params.temp = 5000;
-      if (params.dimming) params.dimming *= 0.25;
+      // params.temp = 5000;
+      if (params.dimming) params.dimming *= 0.75;
     }
+  }
+
+  if (params.dimming === 0) {
+    params.r = 255;
+    params.g = 0;
+    params.b = 0;
   }
 
   return params;
@@ -98,8 +103,7 @@ app.get("/settings", async (_, res) => {
     sequenceColor: lighting.queue.sequenceColor || lighting.sequenceColor,
     sequenceDimming: lighting.sequenceDimming,
     accent: lighting.queue.accent || lighting.activeAccent,
-    accentColorMode:
-      lighting.queue.accentColorMode || lighting.accentColorMode,
+    accentColorMode: lighting.queue.accentColorMode || lighting.accentColorMode,
     accentColor: lighting.queue.accentColor || lighting.accentColor,
     accentDimming: lighting.accentDimming,
   });
