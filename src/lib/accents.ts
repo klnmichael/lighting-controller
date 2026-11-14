@@ -69,7 +69,7 @@ const snare = (
 
 export const accents: Record<string, LightingPattern<AccentTimelineData>> = {
   one: {
-    title: "One",
+    title: "2 On One",
     timeline: ({ beat, tick }: TimelinePosition) => one(beat, tick, 2),
   },
   drum2: {

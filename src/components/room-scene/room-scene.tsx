@@ -107,7 +107,11 @@ export default function RoomScene({
     shape.closePath();
     const floorTexture = new THREE.TextureLoader().load(
       "/floor-texture.jpg",
-      undefined,
+      () => {
+        if (disposed) return;
+        renderNeeded = true;
+        requestRender();
+      },
       undefined,
       (cause) => console.error("Unable to load the floor texture.", cause),
     );
