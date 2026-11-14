@@ -266,25 +266,25 @@ export const sequences: Record<string, LightingPattern> = {
       ]),
     ),
   },
-  zoneCrossfade: {
-    title: "Zone Crossfade",
-    timeline: createCachedTimeline(() => {
-      const zones = [COUCH, KITCHEN, DANCE];
-      return Array.from({ length: 16 }, (_, tick) => {
-        const head = (tick * zones.length) / 16;
-        const current = Math.floor(head);
-        const blend = head - current;
-        return [
-          { dimming: 1 },
-          { ips: zones[current].map((index) => IPS[index]), dimming: blend },
-          {
-            ips: zones[(current + 1) % zones.length].map((index) => IPS[index]),
-            dimming: 1 - blend,
-          },
-        ];
-      });
-    }),
-  },
+  // zoneCrossfade: {
+  //   title: "Zone Crossfade",
+  //   timeline: createCachedTimeline(() => {
+  //     const zones = [COUCH, KITCHEN, DANCE];
+  //     return Array.from({ length: 16 }, (_, tick) => {
+  //       const head = (tick * zones.length) / 16;
+  //       const current = Math.floor(head);
+  //       const blend = head - current;
+  //       return [
+  //         { dimming: 1 },
+  //         { ips: zones[current].map((index) => IPS[index]), dimming: blend },
+  //         {
+  //           ips: zones[(current + 1) % zones.length].map((index) => IPS[index]),
+  //           dimming: 1 - blend,
+  //         },
+  //       ];
+  //     });
+  //   }),
+  // },
   orbitCollision: {
     title: "Orbit Collision",
     timeline: createCachedTimeline(() =>
@@ -310,7 +310,6 @@ export const sequenceOrder = [
   "twinkleFast",
   "pulsate",
   "radialRipple",
-  "zoneCrossfade",
   "waveWindowDoor",
   "waveDoorWindow",
   "waveAlternating",

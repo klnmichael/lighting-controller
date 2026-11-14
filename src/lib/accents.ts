@@ -17,6 +17,20 @@ const cacheIps = (count: number) => {
   }
 };
 
+const one = (
+  beat: number,
+  tick: number,
+  count: number,
+): AccentTimelineData[][] => {
+  if (beat % 1 === 0 && tick === 0) cacheIps(count);
+  return [
+    [{ ips: cachedIPs1, dimming: 0 }],
+    [{ ips: cachedIPs1, dimming: 0 }],
+    [{ ips: cachedIPs1, dimming: 0.5 }],
+    [{ ips: cachedIPs1, dimming: 1 }],
+  ];
+};
+
 const drum = (
   beat: number,
   tick: number,
@@ -54,37 +68,26 @@ const snare = (
 };
 
 export const accents: Record<string, LightingPattern<AccentTimelineData>> = {
+  one: {
+    title: "One",
+    timeline: ({ beat, tick }: TimelinePosition) => one(beat, tick, 2),
+  },
   drum2: {
     title: "2 Drum",
     timeline: ({ beat, tick }: TimelinePosition) => drum(beat, tick, 2),
   },
-  drum4: {
-    title: "4 Drum",
-    timeline: ({ beat, tick }: TimelinePosition) => drum(beat, tick, 4),
-  },
-  drum8: {
-    title: "8 Drum",
-    timeline: ({ beat, tick }: TimelinePosition) => drum(beat, tick, 8),
+  drum6: {
+    title: "6 Drum",
+    timeline: ({ beat, tick }: TimelinePosition) => drum(beat, tick, 6),
   },
   snare2: {
     title: "2 Snare",
     timeline: ({ beat, tick }: TimelinePosition) => snare(beat, tick, 2),
   },
-  snare4: {
-    title: "4 Snare",
-    timeline: ({ beat, tick }: TimelinePosition) => snare(beat, tick, 4),
-  },
-  snare8: {
-    title: "8 Snare",
-    timeline: ({ beat, tick }: TimelinePosition) => snare(beat, tick, 8),
+  snare6: {
+    title: "6 Snare",
+    timeline: ({ beat, tick }: TimelinePosition) => snare(beat, tick, 6),
   },
 };
 
-export const accentOrder = [
-  "drum2",
-  "drum4",
-  "drum8",
-  "snare2",
-  "snare4",
-  "snare8",
-];
+export const accentOrder = ["one", "drum2", "drum6", "snare2", "snare6"];
