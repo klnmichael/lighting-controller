@@ -19,3 +19,12 @@ yarn dev
 ```bash
 yarn hub
 ```
+
+## TODO
+
+- Settings overlay
+  - Light hub URL
+  - Color pallets for both sequences and accents
+  - Controller mapping
+  - Sequence builder?
+  - Bluetooth light timeline

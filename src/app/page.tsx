@@ -26,7 +26,8 @@ export default function Home() {
   const sceneRef = useRef<RoomSceneHandle>(null);
   const previewTrigger = useRef<HTMLElement | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const onOpenPreview = () => {
+
+  const on3D = () => {
     if (previewOpen) return;
     previewTrigger.current =
       document.activeElement instanceof HTMLElement
@@ -34,14 +35,18 @@ export default function Home() {
         : null;
     setPreviewOpen(true);
   };
-  const onClosePreview = useCallback(() => {
+
+  const onClose = useCallback(() => {
     previewTrigger.current?.focus();
     setPreviewOpen(false);
   }, []);
+
   const onLightsChange = useCallback((nextLights: LightState[]) => {
     lights.current = nextLights;
     sceneRef.current?.invalidate();
   }, []);
+
+  const [settings, setSettings] = useState(false);
 
   const [cueTimestamp, setCueTimestamp] = useState(0);
   const [seedShift, setSeedShift] = useState(0);
@@ -90,6 +95,7 @@ export default function Home() {
 
   const onToggle = () => {
     setSequence("");
+    setCueTimestamp(0);
     if (hubUrl)
       fetch(`http://${hubUrl}/toggle`, {
         method: "POST",
@@ -182,6 +188,7 @@ export default function Home() {
 
   const onAccent = (accent: string) => {
     setAccent(accent);
+    if (!sequence) onSequence(Date.now(), "dark");
     if (hubUrl)
       fetch(`http://${hubUrl}/update`, {
         method: "POST",
@@ -346,11 +353,7 @@ export default function Home() {
             leftY,
             Boolean(pressed[10] || pressed[17]),
           );
-          const right = rightStick.update(
-            rightX,
-            rightY,
-            Boolean(pressed[11]),
-          );
+          const right = rightStick.update(rightX, rightY, Boolean(pressed[11]));
           actions.onJoystickPreview(right.preview ?? left.preview);
           if (left.selected) {
             actions.onSequenceColorMode(COLOR_MODES[2]);
@@ -469,10 +472,11 @@ export default function Home() {
         lightbar={lightbar}
         onHubUrlChange={onHubUrlChange}
         onToggle={onToggle}
-        onOpenPreview={onOpenPreview}
         onCue={onCue}
         onBpm={onBpm}
         onBpmTap={onBpmTap}
+        on3D={on3D}
+        onSettings={() => setSettings(true)}
         onSequence={onSequence}
         onSequenceColorMode={onSequenceColorMode}
         onSequenceColor={onSequenceColor}
@@ -482,10 +486,10 @@ export default function Home() {
         onAccentColor={onAccentColor}
         onAccentDimming={onAccentDimming}
       />
-      <Settings />
       {previewOpen && (
-        <RoomPreview ref={sceneRef} lights={lights} onClose={onClosePreview} />
+        <RoomPreview ref={sceneRef} lights={lights} onClose={onClose} />
       )}
+      {settings && <Settings onClose={() => setSettings(false)} />}
     </>
   );
 }

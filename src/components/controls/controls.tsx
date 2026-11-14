@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { type ButtonHTMLAttributes, useRef } from "react";
+import { useRef } from "react";
 import { createRealtimeBpmAnalyzer } from "realtime-bpm-analyzer";
 import type { Color } from "@/types/global";
+import type { useControllerLightbar } from "@/lib/use-controller-lightbar";
 import { sequences, sequenceOrder } from "@/lib/sequences";
 import { accents, accentOrder } from "@/lib/accents";
 import {
@@ -13,73 +14,11 @@ import {
   SEQUENCE_COLORS,
 } from "@/lib/constants";
 import { TOUCHPAD_SEQUENCES } from "@/lib/dualsense-touchpad";
-import Count from "../count";
-import styles from "./controls.module.scss";
 import packageJson from "../../../package.json";
-import type { useControllerLightbar } from "@/lib/use-controller-lightbar";
-
-const PressButton = ({
-  onPress,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { onPress: () => void }) => {
-  return (
-    <button
-      type="button"
-      {...props}
-      // onMouseDown={() => {
-      //   if (!props.disabled) onPress();
-      // }}
-      // onTouchStart={() => {
-      //   if (!props.disabled) onPress();
-      // }}
-      onPointerDown={() => {
-        if (!props.disabled) onPress();
-      }}
-    />
-  );
-};
-
-interface SliderProps {
-  value: number;
-  onChange: (value: number) => void;
-}
-
-const Slider = ({ value, onChange }: SliderProps) => {
-  const sliderRef = useRef<HTMLDivElement>(null);
-  const brightness = value;
-
-  const updateValue = (clientY: number) => {
-    if (!sliderRef.current) return;
-    const rect = sliderRef.current.getBoundingClientRect();
-    const nextBrightness =
-      Math.round(((rect.bottom - clientY) / rect.height) * 100) / 100;
-    onChange(Math.min(1, Math.max(0, nextBrightness)));
-  };
-
-  return (
-    <div
-      ref={sliderRef}
-      className={styles.slider}
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
-        updateValue(e.clientY);
-      }}
-      onPointerMove={(e) => {
-        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-          updateValue(e.clientY);
-        }
-      }}
-    >
-      <div
-        className={styles.slider__progress}
-        style={{ transform: `scaleY(${brightness})` }}
-      ></div>
-      <div className={styles.slider__value}>
-        {Math.round(brightness * 100)}%
-      </div>
-    </div>
-  );
-};
+import Button from "@/components/button";
+import Count from "@/components/count";
+import Slider from "@/components/slider";
+import styles from "./controls.module.scss";
 
 const getColorWheelGradient = (colors: Color[]) => {
   const segmentSize = 360 / colors.length;
@@ -136,7 +75,8 @@ const CONTROLLER_MAP_LABELS = [
   { text: "R1 Next", title: "R1: next sequence", left: "73.7%", top: "5.7%" },
   {
     text: "R2 Bright",
-    title: "Hold R2: left stick adjusts sequence brightness; right stick adjusts accent brightness",
+    title:
+      "Hold R2: left stick adjusts sequence brightness; right stick adjusts accent brightness",
     left: "80%",
     top: "5%",
   },
@@ -154,7 +94,7 @@ const CONTROLLER_MAP_LABELS = [
   },
 ] as const;
 
-export interface MapProps {
+export interface ControlsProps {
   hubUrl: string;
   cueTimestamp: number;
   bpm: number;
@@ -170,10 +110,11 @@ export interface MapProps {
   lightbar: ReturnType<typeof useControllerLightbar>;
   onHubUrlChange: (hubUrl: string) => void;
   onToggle: () => void;
-  onOpenPreview: () => void;
   onCue: (timestamp: number) => void;
   onBpm: (bpm: number) => void;
   onBpmTap: () => void;
+  on3D: () => void;
+  onSettings: () => void;
   onSequence: (timestamp: number, sequence: string) => void;
   onSequenceColorMode: (mode: string) => void;
   onSequenceColor: (color: Color) => void;
@@ -200,10 +141,11 @@ const Controls = ({
   lightbar,
   onHubUrlChange,
   onToggle,
-  onOpenPreview,
   onCue,
   onBpm,
   onBpmTap,
+  on3D,
+  onSettings,
   onSequence,
   onSequenceColorMode,
   onSequenceColor,
@@ -212,7 +154,7 @@ const Controls = ({
   onAccentColorMode,
   onAccentColor,
   onAccentDimming,
-}: MapProps) => {
+}: ControlsProps) => {
   const controllerDialogRef = useRef<HTMLDialogElement>(null);
 
   const onBpmListen = async () => {
@@ -246,8 +188,8 @@ const Controls = ({
     <section className={styles.container}>
       <div className={styles.header}>
         <div className={styles.group}>
-          <PressButton onPress={onToggle}>I/O</PressButton>
-          <PressButton onPress={() => onCue(Date.now())}>CUE</PressButton>
+          <Button onPress={onToggle}>I/O</Button>
+          <Button onPress={() => onCue(Date.now())}>CUE</Button>
         </div>
         <div className={styles.temp}>
           <label className={styles.hubUrl}>
@@ -267,8 +209,8 @@ const Controls = ({
                 accent · Triangle: dark
               </p>
               <p>
-                L1/R1: previous/next sequence · Hold L2: joystick color picker
-                · Hold R2: joystick brightness adjustment
+                L1/R1: previous/next sequence · Hold L2: joystick color picker ·
+                Hold R2: joystick brightness adjustment
               </p>
               <p>D-pad up/down: BPM up/down · left: tap tempo</p>
               <p>
@@ -416,12 +358,9 @@ const Controls = ({
         </div>
         <div className={styles.group}>
           <Count cueTimestamp={cueTimestamp} bpm={bpm} sequence={sequence} />
-          <PressButton
-            className={styles.decrease}
-            onPress={() => onBpm(bpm - 1)}
-          >
+          <Button className={styles.decrease} onPress={() => onBpm(bpm - 1)}>
             -
-          </PressButton>
+          </Button>
           <input
             type="number"
             value={bpm}
@@ -429,60 +368,54 @@ const Controls = ({
             onFocus={(e) => e.target.select()}
             onChange={(e) => onBpm(parseFloat(e.target.value) || 1)}
           />
-          <PressButton
-            className={styles.increase}
-            onPress={() => onBpm(bpm + 1)}
-          >
+          <Button className={styles.increase} onPress={() => onBpm(bpm + 1)}>
             +
-          </PressButton>
-          <PressButton onPress={onBpmTap}>TAP</PressButton>
-          <PressButton className={styles.listen} onPress={onBpmListen}>
-            LISTEN
-          </PressButton>
-          <button type="button" onClick={onOpenPreview}>
-            3D
-          </button>
+          </Button>
+          <Button onPress={onBpmTap}>TAP</Button>
+          <Button onPress={onBpmListen}>LISTEN</Button>
+          <Button onPress={on3D}>3D</Button>
+          <Button onPress={onSettings}>SET</Button>
         </div>
       </div>
       <div className={styles.pad}>
         <div className={styles.column}>
           <div className={styles.column__primary}>
-            <PressButton
+            <Button
               onPress={() => onSequence(Date.now(), "random")}
               data-active={"random" === sequence}
             >
               Random
-            </PressButton>
-            <PressButton
+            </Button>
+            <Button
               onPress={() => onSequence(Date.now(), "dark")}
               data-active={"dark" === sequence}
             >
               Dark
-            </PressButton>
-            <PressButton
+            </Button>
+            <Button
               onPress={() => onSequence(Date.now(), "full")}
               data-active={"full" === sequence}
             >
               Full
-            </PressButton>
-            <PressButton
+            </Button>
+            <Button
               onPress={() => onSequence(Date.now(), "flash")}
               data-active={"flash" === sequence}
             >
               Flash
-            </PressButton>
+            </Button>
             {sequenceOrder.map((name) => (
-              <PressButton
+              <Button
                 key={name}
                 onPress={() => onSequence(Date.now(), name)}
                 data-active={name === sequence}
               >
                 {sequences[name].title}
-              </PressButton>
+              </Button>
             ))}
           </div>
           <div className={styles.column__secondary}>
-            <PressButton
+            <Button
               title={COLOR_MODES[0]}
               style={{
                 background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
@@ -490,7 +423,7 @@ const Controls = ({
               data-active={sequenceColorMode === COLOR_MODES[0]}
               onPress={() => onSequenceColorMode(COLOR_MODES[0])}
             />
-            <PressButton
+            <Button
               title={COLOR_MODES[1]}
               style={{
                 background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
@@ -499,7 +432,7 @@ const Controls = ({
               onPress={() => onSequenceColorMode(COLOR_MODES[1])}
             />
             {SEQUENCE_COLORS.map((color, index) => (
-              <PressButton
+              <Button
                 key={index}
                 title={`${color[0]}, ${color[1]}, ${color[2]}`}
                 style={{
@@ -525,24 +458,24 @@ const Controls = ({
         </div>
         <div className={styles.column}>
           <div className={styles.column__primary}>
-            <PressButton
+            <Button
               onPress={() => onAccent("random" === accent ? "" : "random")}
               data-active={"random" === accent}
             >
               Random
-            </PressButton>
+            </Button>
             {accentOrder.map((name) => (
-              <PressButton
+              <Button
                 key={name}
                 onPress={() => onAccent(name === accent ? "" : name)}
                 data-active={name === accent}
               >
                 {accents[name].title}
-              </PressButton>
+              </Button>
             ))}
           </div>
           <div className={styles.column__secondary}>
-            <PressButton
+            <Button
               title={COLOR_MODES[0]}
               style={{
                 background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
@@ -551,7 +484,7 @@ const Controls = ({
               onPress={() => onAccentColorMode(COLOR_MODES[0])}
             />
             {ACCENT_COLORS.map((color, index) => (
-              <PressButton
+              <Button
                 key={index}
                 title={`${color[0]}, ${color[1]}, ${color[2]}`}
                 style={{

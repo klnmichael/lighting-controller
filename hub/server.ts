@@ -111,6 +111,7 @@ app.get("/settings", async (_, res) => {
 
 app.post("/toggle", async (_, res) => {
   stopLoop();
+  lighting.cueTimestamp = 0;
   lighting.activeSequence = "";
   lighting.runningSequence = "";
   res.status(200).json({});

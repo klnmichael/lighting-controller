@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, type Ref, type RefObject } from "react";
-import RoomScene, { type RoomSceneHandle } from "@/components/room-scene";
 import type { LightState } from "@/lib/lights";
+import Button from "@/components/button";
+import RoomScene, { type RoomSceneHandle } from "@/components/room-scene";
 import styles from "./room-preview.module.scss";
 
 export default function RoomPreview({
@@ -24,18 +25,13 @@ export default function RoomPreview({
 
   return (
     <section
-      className={styles.preview}
+      className={styles.container}
       role="dialog"
       aria-label="3D lighting preview"
     >
-      <button
-        type="button"
-        className={styles.preview__close}
-        onClick={onClose}
-        autoFocus
-      >
+      <Button className={styles.close} autoFocus onPress={onClose}>
         CLOSE
-      </button>
+      </Button>
       <RoomScene ref={ref} lights={lights} />
     </section>
   );
