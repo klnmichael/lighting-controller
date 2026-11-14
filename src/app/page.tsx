@@ -18,7 +18,10 @@ import Settings from "@/components/settings";
 import { useControllerLightbar } from "@/lib/use-controller-lightbar";
 import { JoystickColorSelection } from "@/lib/joystick-color";
 import { TapTempo } from "@/lib/tap-tempo";
-import { createLightingLoopState, getActiveLighting } from "@/lib/lighting-loop";
+import {
+  createLightingLoopState,
+  getActiveLighting,
+} from "@/lib/lighting-loop";
 
 const GAMEPAD_SEQUENCES = ["random", "dark", "full", "flash", ...sequenceOrder];
 
@@ -192,7 +195,6 @@ export default function Home() {
 
   const onAccent = (accent: string) => {
     setAccent(accent);
-    if (!sequence) onSequence(Date.now(), "dark");
     if (hubUrl)
       fetch(`http://${hubUrl}/update`, {
         method: "POST",

@@ -60,7 +60,7 @@ export default function RoomScene({
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     } catch (cause) {
       console.error("Unable to initialize the 3D room preview.", cause);
       // WebGL availability is only known after initializing the external renderer.
@@ -72,7 +72,7 @@ export default function RoomScene({
     }
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor("#000000");
+    renderer.setClearColor("#000000", 0);
     host.appendChild(renderer.domElement);
 
     const labels = new CSS2DRenderer();

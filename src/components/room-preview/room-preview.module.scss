@@ -6,7 +6,12 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #000;
+  background: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  backdrop-filter: blur(0.5vw);
 }
 .close {
   position: absolute;

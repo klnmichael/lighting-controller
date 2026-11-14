@@ -54,11 +54,11 @@ const buildParams = (config: WizLight): WizLight => {
     }
   }
 
-  if (params.dimming === 0) {
-    params.r = 255;
-    params.g = 0;
-    params.b = 0;
-  }
+  // if (params.dimming === 0) {
+  //   params.r = 255;
+  //   params.g = 0;
+  //   params.b = 0;
+  // }
 
   return params;
 };

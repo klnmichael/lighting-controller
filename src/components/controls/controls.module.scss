@@ -5,7 +5,7 @@
   display: flex;
   flex-flow: column;
   z-index: 2;
-  backdrop-filter: blur(1rem);
+  backdrop-filter: blur(0.5vw);
 }
 .header {
   padding: 2.5vw 3.5vw;
@@ -299,12 +299,12 @@
     100% {
       box-shadow:
         0 0.5vw 1vw rgba(0, 0, 0, 0.75),
-        0 0 0 0.75vw rgba(0, 0, 0, 0.5) inset;
+        0 0 0 0.5vw rgba(0, 0, 0, 0.5) inset;
     }
     50% {
       box-shadow:
         0 0.5vw 1vw rgba(0, 0, 0, 0.75),
-        0 0 0 1vw rgba(0, 0, 0, 1) inset;
+        0 0 0 0.75vw rgba(0, 0, 0, 1) inset;
     }
   }
 }
