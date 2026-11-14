@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { type ButtonHTMLAttributes, useRef } from "react";
 import { createRealtimeBpmAnalyzer } from "realtime-bpm-analyzer";
 import type { Color } from "@/types/global";
@@ -80,6 +81,79 @@ const Slider = ({ value, onChange }: SliderProps) => {
   );
 };
 
+const getColorWheelGradient = (colors: Color[]) => {
+  const segmentSize = 360 / colors.length;
+  const stops = colors.flatMap((color, index) => {
+    const colorValue = `rgb(${color.join(",")})`;
+    return [
+      `${colorValue} ${index * segmentSize}deg`,
+      `${colorValue} ${(index + 1) * segmentSize}deg`,
+    ];
+  });
+  return `conic-gradient(from ${-segmentSize / 2}deg, ${stops.join(", ")})`;
+};
+
+const CONTROLLER_MAP_LABELS = [
+  {
+    text: "L1 Prev",
+    title: "L1: previous sequence",
+    left: "27.7%",
+    top: "5.7%",
+  },
+  {
+    text: "L2 Dim-",
+    title: "L2: lower sequence brightness",
+    left: "20%",
+    top: "5%",
+  },
+  {
+    text: "BPM+",
+    title: "D-pad up: increase BPM",
+    left: "19%",
+    top: "21.2%",
+  },
+  { text: "Tap", title: "D-pad left: tap tempo", left: "14.8%", top: "28.5%" },
+  {
+    text: "BPM-",
+    title: "D-pad down: decrease BPM",
+    left: "19%",
+    top: "36.7%",
+  },
+  { text: "I/O", title: "Cross: toggle output", left: "80.5%", top: "39.8%" },
+  {
+    text: "Random",
+    title: "Square: random sequence and accent",
+    left: "72.8%",
+    top: "28.5%",
+  },
+  { text: "Cue", title: "Circle: cue", left: "87.4%", top: "28.5%" },
+  {
+    text: "Dark",
+    title: "Triangle: select the Dark sequence",
+    left: "79.9%",
+    top: "18.1%",
+  },
+  { text: "R1 Next", title: "R1: next sequence", left: "73.7%", top: "5.7%" },
+  {
+    text: "R2 Dim+",
+    title: "R2: raise sequence brightness",
+    left: "80%",
+    top: "5%",
+  },
+  {
+    text: "Seq / L3 rand",
+    title: "Left stick: sequence color; L3: random sequence color",
+    left: "21%",
+    top: "49.1%",
+  },
+  {
+    text: "Accent / R3 rand",
+    title: "Right stick: accent color; R3: random accent color",
+    left: "80%",
+    top: "49.1%",
+  },
+] as const;
+
 export interface MapProps {
   hubUrl: string;
   cueTimestamp: number;
@@ -139,7 +213,7 @@ const Controls = ({
   onAccentColor,
   onAccentDimming,
 }: MapProps) => {
-  const touchpadDialogRef = useRef<HTMLDialogElement>(null);
+  const controllerDialogRef = useRef<HTMLDialogElement>(null);
 
   const onBpmListen = async () => {
     const audioContext = new AudioContext();
@@ -186,15 +260,17 @@ const Controls = ({
             />
           </label>
           <details className={styles.gamepad}>
-            <summary>PS5 Controls</summary>
+            <summary>{gamepadName ? gamepadName : "PS5 Controller"}</summary>
             <div>
-              {gamepadName && <span>{gamepadName}</span>}
               <p>
-                Cross: toggle output · Circle: cue · Square: random · Triangle:
-                full
+                Cross: toggle output · Circle: cue · Square: random sequence and
+                accent · Triangle: dark
               </p>
-              <p>L1/R1: effects · L2/R2: sequence brightness</p>
-              <p>D-pad up/down: BPM · left: tap tempo</p>
+              <p>
+                L1/R1: previous/next sequence · L2/R2: sequence brightness
+                down/up
+              </p>
+              <p>D-pad up/down: BPM up/down · left: tap tempo</p>
               <p>
                 Left stick: sequence color · Right stick: accent color. Colors
                 run clockwise from up. Tilt to preview; center to apply. L3/R3:
@@ -207,77 +283,111 @@ const Controls = ({
                 )}
                 ; bottom row selects{" "}
                 {accentOrder.map((name) => accents[name].title).join(", ")}.
-                Touch and lift to select.
-              </p>
-              <p>
-                Touchpad click: clear the active accent; cancels touch
-                selection.
+                Touch and lift to select; click to clear the active accent.
               </p>
               <button
                 type="button"
-                onClick={() => touchpadDialogRef.current?.showModal()}
+                onClick={() => controllerDialogRef.current?.showModal()}
               >
-                Show touchpad map
+                Show controller map
               </button>
               <dialog
-                ref={touchpadDialogRef}
-                className={styles.touchpadDialog}
-                aria-labelledby="touchpad-map-title"
+                ref={controllerDialogRef}
+                className={styles.controllerDialog}
+                aria-labelledby="controller-map-title"
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.preventDefault();
-                    touchpadDialogRef.current?.close();
+                    controllerDialogRef.current?.close();
                   }
                 }}
               >
-                <div className={styles.touchpadDialog__header}>
-                  <h2 id="touchpad-map-title">Touchpad map</h2>
+                <div className={styles.controllerDialog__header}>
+                  <h2 id="controller-map-title">PS5 controller map</h2>
                   <form method="dialog">
                     <button type="submit" autoFocus>
                       Close
                     </button>
                   </form>
                 </div>
-                <p>Touch and lift to select. Light bar sync is required.</p>
-                <div className={styles.touchpadMap}>
-                  <svg viewBox="0 0 600 250" aria-hidden="true">
-                    <path
-                      d="M12 12 Q300 2 588 12 L580 216 Q578 238 555 242 Q300 250 45 242 Q22 238 20 216 Z"
-                      fill="#e2e4e8"
-                      stroke="#858a94"
-                      strokeWidth="3"
-                    />
-                    <rect
-                      x="24"
-                      y="24"
-                      width="552"
-                      height="200"
-                      rx="12"
-                      fill="#20242c"
-                      stroke="#777e8a"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  <div className={styles.touchpadMap__zones}>
-                    <div
-                      className={styles.touchpadMap__row}
-                      aria-label="Sequences"
+                <div className={styles.controllerMap}>
+                  <Image
+                    src="/ps5-controller.png"
+                    alt="Front view of a PS5 DualSense controller"
+                    fill
+                    sizes="(max-width: 72rem) 100vw, 70rem"
+                  />
+                  <span
+                    className={styles.controllerMap__colorWheel}
+                    role="img"
+                    aria-label="Sequence colors, clockwise from white at the top"
+                    title="Sequence colors: clockwise from white at the top"
+                    style={{
+                      left: "34.2%",
+                      top: "49.1%",
+                      background: getColorWheelGradient(SEQUENCE_COLORS),
+                    }}
+                  />
+                  <span
+                    className={styles.controllerMap__colorWheel}
+                    role="img"
+                    aria-label="Accent colors, clockwise from white at the top"
+                    title="Accent colors: clockwise from white at the top"
+                    style={{
+                      left: "65.6%",
+                      top: "49.1%",
+                      background: getColorWheelGradient(ACCENT_COLORS),
+                    }}
+                  />
+                  {CONTROLLER_MAP_LABELS.map((label) => (
+                    <span
+                      key={label.title}
+                      className={styles.controllerMap__label}
+                      title={label.title}
+                      style={{ left: label.left, top: label.top }}
                     >
-                      {TOUCHPAD_SEQUENCES.map((name) => (
-                        <span key={name}>{sequences[name].title}</span>
-                      ))}
+                      {label.text}
+                    </span>
+                  ))}
+                  <div
+                    className={styles.controllerMap__touchpad}
+                    role="group"
+                    aria-label="Touchpad zones"
+                  >
+                    <div
+                      className={styles.controllerMap__touchpadRow}
+                      role="group"
+                      aria-label="Top row: sequences"
+                    >
+                      {TOUCHPAD_SEQUENCES.map((name) => {
+                        const title = sequences[name].title;
+                        return (
+                          <span key={name} title={`Select ${title}`}>
+                            {title.replace(/^Wave /, "")}
+                          </span>
+                        );
+                      })}
                     </div>
                     <div
-                      className={styles.touchpadMap__row}
-                      aria-label="Accents"
+                      className={styles.controllerMap__touchpadRow}
+                      role="group"
+                      aria-label="Bottom row: accents"
                     >
                       {accentOrder.map((name) => (
-                        <span key={name}>{accents[name].title}</span>
+                        <span
+                          key={name}
+                          title={`Select ${accents[name].title}`}
+                        >
+                          {accents[name].title}
+                        </span>
                       ))}
                     </div>
                   </div>
                 </div>
-                <p>Click the touchpad to clear the active accent.</p>
+                <p>
+                  Touch and lift on the touchpad to select a sequence or accent.
+                  Click the touchpad to clear the active accent.
+                </p>
               </dialog>
               <p>
                 Sync the DualSense light bar to the most common illuminated

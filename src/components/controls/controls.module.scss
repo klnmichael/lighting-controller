@@ -116,9 +116,9 @@
     font-size: inherit;
   }
 }
-.container .touchpadDialog {
+.container .controllerDialog {
   box-sizing: border-box;
-  width: min(42rem, calc(100vw - 2rem));
+  width: min(72rem, calc(100vw - 2rem));
   max-width: none;
   max-height: calc(100vh - 2rem);
   padding: 1.25rem;
@@ -145,7 +145,7 @@
   }
 
   p {
-    margin: 0.75rem 0;
+    margin: 0.75rem 0 0;
   }
 
   button {
@@ -156,34 +156,68 @@
     font-size: 0.875rem;
   }
 }
-.touchpadMap {
+.controllerMap {
   position: relative;
   width: 100%;
-  aspect-ratio: 600 / 250;
+  aspect-ratio: 1344 / 910;
+  border-radius: 0.25rem;
+  background: #969ba4;
 
-  svg {
-    display: block;
-    width: 100%;
-    height: 100%;
+  img {
+    z-index: 0;
+    object-fit: contain;
   }
 
-  &__zones {
+  &__colorWheel {
     position: absolute;
-    left: 4%;
-    top: 9.6%;
-    width: 92%;
-    height: 80%;
+    z-index: 1;
+    width: 18%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    filter: drop-shadow(0 0 0.2rem rgba(0, 0, 0, 0.75));
+    -webkit-mask-image: radial-gradient(circle, transparent 0 62%, #000 63%);
+    mask-image: radial-gradient(circle, transparent 0 62%, #000 63%);
+    pointer-events: none;
+  }
+
+  &__label {
+    position: absolute;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    padding: 0.1rem 0.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 0.25rem;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    text-align: center;
+    white-space: pre-line;
+    font-size: clamp(0.5rem, 0.9vw, 0.8rem);
+    line-height: 1.2;
+  }
+
+  &__touchpad {
+    position: absolute;
+    z-index: 1;
+    left: 30%;
+    top: 10%;
+    width: 40%;
+    height: 20%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    border-radius: 0.25rem;
+    background: rgba(0, 0, 0, 0.8);
   }
 
-  &__row {
+  &__touchpadRow {
     display: flex;
     flex: 1;
     min-height: 0;
 
     & + & {
-      border-top: 1px solid #777e8a;
+      border-top: 1px solid rgba(255, 255, 255, 0.75);
     }
 
     span {
@@ -192,14 +226,21 @@
       min-width: 0;
       align-items: center;
       justify-content: center;
-      padding: 0.15rem;
+      padding: 0.1rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.45);
+      color: #fff;
       text-align: center;
       overflow-wrap: anywhere;
-      font-size: clamp(0.55rem, 1.7vw, 0.85rem);
+      font-size: clamp(0.4rem, 0.5vw, 0.7rem);
+      line-height: 1.1;
     }
 
     span + span {
-      border-left: 1px solid #777e8a;
+      border-left: 0;
+    }
+
+    span:last-child {
+      border-right: 0;
     }
   }
 }

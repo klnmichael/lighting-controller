@@ -8,10 +8,11 @@ export interface TouchPoint {
 
 export const TOUCHPAD_SEQUENCES = [
   "pulsate",
-  "waveRadiateOut",
-  "waveKitchenWall",
   "circle1",
   "circle2",
+  "waveAlternating",
+  "waveKitchenWall",
+  "waveRadiateOut",
 ] as const;
 
 export type TouchpadAction =
@@ -50,7 +51,10 @@ export class DualSenseTouchpadSelection {
   private action: TouchpadAction | null = null;
   private cancelled = false;
 
-  update(touches: TouchPoint[], clicked = false): {
+  update(
+    touches: TouchPoint[],
+    clicked = false,
+  ): {
     selected: TouchpadAction | null;
   } {
     if (clicked) {
