@@ -7,7 +7,9 @@ import { IPS } from "@/lib/constants";
 import {
   advanceLightingLoop,
   createLightingLoopState,
+  getActiveLighting,
   queueLightingUpdate,
+  type ActiveLighting,
 } from "@/lib/lighting-loop";
 import { LIGHT_POSITIONS, ROOM_OUTLINE } from "@/lib/room-layout";
 import { createLights, type LightState } from "@/lib/lights";
@@ -26,6 +28,7 @@ export interface MapProps {
   accentColor: Color;
   accentDimming: number;
   onLightsChange: (lights: LightState[]) => void;
+  onActiveLightingChange: (lighting: ActiveLighting) => void;
 }
 
 const Map = ({
@@ -41,6 +44,7 @@ const Map = ({
   accentColor,
   accentDimming,
   onLightsChange,
+  onActiveLightingChange,
 }: MapProps) => {
   const lighting = useRef(createLightingLoopState());
 
@@ -51,10 +55,15 @@ const Map = ({
   const lights = useRef(createLights());
   const lightRefs = useRef<(HTMLDivElement | null)[]>([]);
   const onLightsChangeRef = useRef(onLightsChange);
+  const onActiveLightingChangeRef = useRef(onActiveLightingChange);
 
   useEffect(() => {
     onLightsChangeRef.current = onLightsChange;
   }, [onLightsChange]);
+
+  useEffect(() => {
+    onActiveLightingChangeRef.current = onActiveLightingChange;
+  }, [onActiveLightingChange]);
 
   const updateLight = (
     ip: number,
@@ -73,8 +82,12 @@ const Map = ({
   };
 
   const loop = () => {
+    const queue = lighting.current.queue;
     const lightMap = advanceLightingLoop(lighting.current);
     if (!lightMap) return;
+    if (queue !== lighting.current.queue) {
+      onActiveLightingChangeRef.current(getActiveLighting(lighting.current));
+    }
     for (const [ip, params] of Object.entries(lightMap)) {
       updateLight(parseInt(ip), params);
     }
@@ -134,7 +147,9 @@ const Map = ({
       stopLoop();
       lighting.current.activeSequence = "";
       lighting.current.runningSequence = "";
+      delete lighting.current.queue.sequence;
     }
+    onActiveLightingChangeRef.current(getActiveLighting(lighting.current));
   }, [sequence]);
 
   useEffect(() => {

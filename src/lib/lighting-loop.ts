@@ -36,6 +36,27 @@ export interface LightingLoopState {
   currentTick: number;
 }
 
+export type ActiveLighting = Pick<
+  LightingLoopState,
+  | "activeSequence"
+  | "activeAccent"
+  | "sequenceColorMode"
+  | "sequenceColor"
+  | "accentColorMode"
+  | "accentColor"
+>;
+
+export function getActiveLighting(state: LightingLoopState): ActiveLighting {
+  return {
+    activeSequence: state.activeSequence,
+    activeAccent: state.activeAccent,
+    sequenceColorMode: state.sequenceColorMode,
+    sequenceColor: state.sequenceColor,
+    accentColorMode: state.accentColorMode,
+    accentColor: state.accentColor,
+  };
+}
+
 const mulberry32 = (seed: number) => () => {
   let t = (seed += 0x6d2b79f5);
   t = Math.imul(t ^ (t >>> 15), t | 1);

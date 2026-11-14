@@ -20,9 +20,9 @@ export const createWizSender = (
   const inFlight = new Set<number>();
   let closed = false;
 
-  socket.on("error", (error) => {
-    console.error("WiZ UDP socket error:", error);
-  });
+  // socket.on("error", (error) => {
+  //   console.error("WiZ UDP socket error:", error);
+  // });
   socket.bind();
 
   const flush = (ip: number) => {

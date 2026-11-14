@@ -14,6 +14,8 @@ import {
 import { majorityLightColor, type LightState } from "./lights";
 import type { Color } from "../types/global";
 
+const OFF_COLOR: Color = [0, 0, 0];
+
 export function useControllerLightbar(
   lights: RefObject<LightState[]>,
   onSequenceSelected: (sequence: string) => void,
@@ -21,8 +23,12 @@ export function useControllerLightbar(
 ) {
   const controller = useRef<DualSenseLightbar | null>(null);
   const joystickPreview = useRef<Color | null>(null);
+  const lightbarSuppressed = useRef(false);
   const onJoystickPreview = useCallback((color: Color | null) => {
     joystickPreview.current = color;
+  }, []);
+  const onLightbarSuppressed = useCallback((suppressed: boolean) => {
+    lightbarSuppressed.current = suppressed;
   }, []);
   const sequenceCallback = useRef(onSequenceSelected);
   const accentCallback = useRef(onAccentSelected);
@@ -35,6 +41,10 @@ export function useControllerLightbar(
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
+
+  const currentColor = () =>
+    joystickPreview.current ??
+    (lightbarSuppressed.current ? OFF_COLOR : majorityLightColor(lights.current));
 
   useEffect(() => {
     sequenceCallback.current = onSequenceSelected;
@@ -64,9 +74,7 @@ export function useControllerLightbar(
     const timer = setInterval(async () => {
       const current = controller.current;
       if (!current || writing) return;
-      const color =
-        joystickPreview.current ??
-        majorityLightColor(lights.current);
+      const color = currentColor();
       const key = color.join(",");
       if (lastSent.current?.controller === current && lastSent.current.color === key) {
         return;
@@ -166,9 +174,7 @@ export function useControllerLightbar(
       if (!device) return;
       selected = new DualSenseLightbar(device);
       await selected.initialize();
-      const color =
-        joystickPreview.current ??
-        majorityLightColor(lights.current);
+      const color = currentColor();
       await selected.setColor(color);
       if (mounted.current) {
         controller.current = selected;
@@ -193,5 +199,13 @@ export function useControllerLightbar(
     }
   };
 
-  return { supported, busy, connected, error, connect, onJoystickPreview };
+  return {
+    supported,
+    busy,
+    connected,
+    error,
+    connect,
+    onJoystickPreview,
+    onLightbarSuppressed,
+  };
 }

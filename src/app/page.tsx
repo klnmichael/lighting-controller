@@ -18,6 +18,7 @@ import Settings from "@/components/settings";
 import { useControllerLightbar } from "@/lib/use-controller-lightbar";
 import { JoystickColorSelection } from "@/lib/joystick-color";
 import { TapTempo } from "@/lib/tap-tempo";
+import { createLightingLoopState, getActiveLighting } from "@/lib/lighting-loop";
 
 const GAMEPAD_SEQUENCES = ["random", "dark", "full", "flash", ...sequenceOrder];
 
@@ -59,6 +60,9 @@ export default function Home() {
   const [accentColorMode, setAccentColorMode] = useState(COLOR_MODES[0]);
   const [accentColor, setAccentColor] = useState<Color>([255, 255, 255]);
   const [accentDimming, setAccentDimming] = useState(1);
+  const [activeLighting, setActiveLighting] = useState(() =>
+    getActiveLighting(createLightingLoopState()),
+  );
 
   const [hubUrl, setHubUrl] = useState("");
   const [gamepadName, setGamepadName] = useState("");
@@ -251,6 +255,7 @@ export default function Home() {
     onAccentColor,
     onAccent,
     onJoystickPreview: lightbar.onJoystickPreview,
+    onLightbarSuppressed: lightbar.onLightbarSuppressed,
     onBpm,
     onBpmTap,
     onSequenceDimming,
@@ -270,6 +275,7 @@ export default function Home() {
     onAccentColor,
     onAccent,
     onJoystickPreview: lightbar.onJoystickPreview,
+    onLightbarSuppressed: lightbar.onLightbarSuppressed,
     onBpm,
     onBpmTap,
     onSequenceDimming,
@@ -286,6 +292,7 @@ export default function Home() {
     let rightStick = new JoystickColorSelection(ACCENT_COLORS);
     let controllerKey = "";
     let colorPickerEnabled = false;
+    let lightbarSuppressed = false;
     let previousFrameTimestamp = 0;
     let brightnessUpdateElapsed = 0;
     const pollGamepad = (timestamp: number) => {
@@ -303,8 +310,10 @@ export default function Home() {
         leftStick = new JoystickColorSelection(SEQUENCE_COLORS);
         rightStick = new JoystickColorSelection(ACCENT_COLORS);
         colorPickerEnabled = false;
+        lightbarSuppressed = false;
         previousButtons.current = [];
         gamepadActions.current.onJoystickPreview(null);
+        gamepadActions.current.onLightbarSuppressed(false);
       }
 
       const nextName = gamepad?.id ?? "";
@@ -315,6 +324,10 @@ export default function Home() {
 
       if (!gamepad) {
         previousButtons.current = [];
+        if (lightbarSuppressed) {
+          lightbarSuppressed = false;
+          gamepadActions.current.onLightbarSuppressed(false);
+        }
       } else {
         const pressed = gamepad.buttons.map((button) => button.pressed);
         const wasPressed = previousButtons.current;
@@ -325,6 +338,11 @@ export default function Home() {
 
         const colorPickerActive = Boolean(pressed[6]);
         const brightnessActive = Boolean(pressed[7] && !pressed[6]);
+        const suppressLightbar = Boolean(pressed[6] || pressed[7]);
+        if (suppressLightbar !== lightbarSuppressed) {
+          lightbarSuppressed = suppressLightbar;
+          actions.onLightbarSuppressed(suppressLightbar);
+        }
         if (colorPickerActive !== colorPickerEnabled) {
           colorPickerEnabled = colorPickerActive;
           leftStick = new JoystickColorSelection(SEQUENCE_COLORS);
@@ -428,6 +446,7 @@ export default function Home() {
     return () => {
       cancelAnimationFrame(frameId);
       gamepadActions.current.onJoystickPreview(null);
+      gamepadActions.current.onLightbarSuppressed(false);
     };
   }, []);
 
@@ -455,8 +474,10 @@ export default function Home() {
         accentColor={accentColor}
         accentDimming={accentDimming}
         onLightsChange={onLightsChange}
+        onActiveLightingChange={setActiveLighting}
       />
       <Controls
+        activeLighting={activeLighting}
         hubUrl={hubUrl}
         cueTimestamp={cueTimestamp}
         bpm={bpm}

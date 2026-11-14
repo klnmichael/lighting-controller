@@ -14,6 +14,10 @@ yarn install
 yarn dev
 ```
 
+Sequence, accent, and color buttons pulse with an inset shadow while their
+selection is queued for the next four-beat boundary. Applied selections have a
+steady inset shadow. Reduced-motion preferences disable the pulse.
+
 ## Start Hub
 
 ```bash

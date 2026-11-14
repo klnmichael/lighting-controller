@@ -14,6 +14,7 @@ import {
   SEQUENCE_COLORS,
 } from "@/lib/constants";
 import { TOUCHPAD_SEQUENCES } from "@/lib/dualsense-touchpad";
+import type { ActiveLighting } from "@/lib/lighting-loop";
 import packageJson from "../../../package.json";
 import Button from "@/components/button";
 import Count from "@/components/count";
@@ -95,6 +96,7 @@ const CONTROLLER_MAP_LABELS = [
 ] as const;
 
 export interface ControlsProps {
+  activeLighting: ActiveLighting;
   hubUrl: string;
   cueTimestamp: number;
   bpm: number;
@@ -126,6 +128,7 @@ export interface ControlsProps {
 }
 
 const Controls = ({
+  activeLighting,
   hubUrl,
   cueTimestamp,
   bpm,
@@ -156,6 +159,39 @@ const Controls = ({
   onAccentDimming,
 }: ControlsProps) => {
   const controllerDialogRef = useRef<HTMLDialogElement>(null);
+  const applied = sequence
+    ? activeLighting
+    : {
+        activeSequence: "",
+        activeAccent: accent,
+        sequenceColorMode,
+        sequenceColor,
+        accentColorMode,
+        accentColor,
+      };
+  const buttonState = (selected: boolean, active: boolean) => ({
+    "data-active": active,
+    "data-queued": selected && !active,
+    "aria-busy": selected && !active,
+  });
+  const sequenceButtonState = (name: string) =>
+    buttonState(sequence === name, applied.activeSequence === name);
+  const accentButtonState = (name: string) => {
+    const active = applied.activeAccent === name;
+    const queued = Boolean(sequence) && active && accent === "";
+    return {
+      ...buttonState(accent === name, active),
+      ...(queued ? { "data-queued": true, "aria-busy": true } : {}),
+    };
+  };
+  const colorMatches = (
+    color: Color,
+    selectedColor: Color | undefined,
+    mode: string | undefined,
+  ) =>
+    mode === COLOR_MODES[2] &&
+    selectedColor !== undefined &&
+    color.every((channel, index) => channel === selectedColor[index]);
 
   const onBpmListen = async () => {
     const audioContext = new AudioContext();
@@ -220,6 +256,10 @@ const Controls = ({
                 stick up/down for sequence brightness and the right stick
                 up/down for accent brightness. L3/R3: random sequence/accent
                 colors.
+              </p>
+              <p>
+                The controller light turns off while holding L2 or R2; L2 color
+                previews remain visible.
               </p>
               <p>
                 Touchpad (with sync): top row selects{" "}
@@ -372,7 +412,9 @@ const Controls = ({
             +
           </Button>
           <Button onPress={onBpmTap}>TAP</Button>
-          <Button onPress={onBpmListen}>LISTEN</Button>
+          <Button className={styles.listen} onPress={onBpmListen}>
+            LISTEN
+          </Button>
           <Button onPress={on3D}>3D</Button>
           <Button onPress={onSettings}>SET</Button>
         </div>
@@ -382,25 +424,25 @@ const Controls = ({
           <div className={styles.column__primary}>
             <Button
               onPress={() => onSequence(Date.now(), "random")}
-              data-active={"random" === sequence}
+              {...sequenceButtonState("random")}
             >
               Random
             </Button>
             <Button
               onPress={() => onSequence(Date.now(), "dark")}
-              data-active={"dark" === sequence}
+              {...sequenceButtonState("dark")}
             >
               Dark
             </Button>
             <Button
               onPress={() => onSequence(Date.now(), "full")}
-              data-active={"full" === sequence}
+              {...sequenceButtonState("full")}
             >
               Full
             </Button>
             <Button
               onPress={() => onSequence(Date.now(), "flash")}
-              data-active={"flash" === sequence}
+              {...sequenceButtonState("flash")}
             >
               Flash
             </Button>
@@ -408,7 +450,7 @@ const Controls = ({
               <Button
                 key={name}
                 onPress={() => onSequence(Date.now(), name)}
-                data-active={name === sequence}
+                {...sequenceButtonState(name)}
               >
                 {sequences[name].title}
               </Button>
@@ -420,7 +462,10 @@ const Controls = ({
               style={{
                 background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
               }}
-              data-active={sequenceColorMode === COLOR_MODES[0]}
+              {...buttonState(
+                sequenceColorMode === COLOR_MODES[0],
+                applied.sequenceColorMode === COLOR_MODES[0],
+              )}
               onPress={() => onSequenceColorMode(COLOR_MODES[0])}
             />
             <Button
@@ -428,7 +473,10 @@ const Controls = ({
               style={{
                 background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
               }}
-              data-active={sequenceColorMode === COLOR_MODES[1]}
+              {...buttonState(
+                sequenceColorMode === COLOR_MODES[1],
+                applied.sequenceColorMode === COLOR_MODES[1],
+              )}
               onPress={() => onSequenceColorMode(COLOR_MODES[1])}
             />
             {SEQUENCE_COLORS.map((color, index) => (
@@ -438,13 +486,14 @@ const Controls = ({
                 style={{
                   background: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
                 }}
-                data-active={
-                  sequenceColor &&
-                  color[0] === sequenceColor[0] &&
-                  color[1] === sequenceColor[1] &&
-                  color[2] === sequenceColor[2] &&
-                  sequenceColorMode === COLOR_MODES[2]
-                }
+                {...buttonState(
+                  colorMatches(color, sequenceColor, sequenceColorMode),
+                  colorMatches(
+                    color,
+                    applied.sequenceColor,
+                    applied.sequenceColorMode,
+                  ),
+                )}
                 onPress={() => {
                   onSequenceColorMode(COLOR_MODES[2]);
                   onSequenceColor(color);
@@ -460,7 +509,7 @@ const Controls = ({
           <div className={styles.column__primary}>
             <Button
               onPress={() => onAccent("random" === accent ? "" : "random")}
-              data-active={"random" === accent}
+              {...accentButtonState("random")}
             >
               Random
             </Button>
@@ -468,7 +517,7 @@ const Controls = ({
               <Button
                 key={name}
                 onPress={() => onAccent(name === accent ? "" : name)}
-                data-active={name === accent}
+                {...accentButtonState(name)}
               >
                 {accents[name].title}
               </Button>
@@ -480,7 +529,10 @@ const Controls = ({
               style={{
                 background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
               }}
-              data-active={accentColorMode === COLOR_MODES[0]}
+              {...buttonState(
+                accentColorMode === COLOR_MODES[0],
+                applied.accentColorMode === COLOR_MODES[0],
+              )}
               onPress={() => onAccentColorMode(COLOR_MODES[0])}
             />
             {ACCENT_COLORS.map((color, index) => (
@@ -490,13 +542,14 @@ const Controls = ({
                 style={{
                   background: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
                 }}
-                data-active={
-                  accentColor &&
-                  color[0] === accentColor[0] &&
-                  color[1] === accentColor[1] &&
-                  color[2] === accentColor[2] &&
-                  accentColorMode === COLOR_MODES[2]
-                }
+                {...buttonState(
+                  colorMatches(color, accentColor, accentColorMode),
+                  colorMatches(
+                    color,
+                    applied.accentColor,
+                    applied.accentColorMode,
+                  ),
+                )}
                 onPress={() => {
                   onAccentColorMode(COLOR_MODES[2]);
                   onAccentColor(color);
