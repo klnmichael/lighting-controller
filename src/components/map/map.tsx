@@ -3,14 +3,12 @@
 import Image from "next/image";
 import { useRef, useEffect } from "react";
 import type { Color } from "@/types/global";
+import { IPS } from "@/lib/constants";
 import {
-  ACCENT_COLORS,
-  ACTIVE_COLORS,
-  COLOR_MODES,
-  IPS,
-} from "@/lib/constants";
-import { sequenceOrder, sequences } from "@/lib/sequences";
-import { accentOrder, accents } from "@/lib/accents";
+  advanceLightingLoop,
+  createLightingLoopState,
+  queueLightingUpdate,
+} from "@/lib/lighting-loop";
 import { LIGHT_POSITIONS, ROOM_OUTLINE } from "@/lib/room-layout";
 import { createLights, type LightState } from "@/lib/lights";
 import styles from "./map.module.scss";
@@ -44,33 +42,7 @@ const Map = ({
   accentDimming,
   onLightsChange,
 }: MapProps) => {
-  const seedShiftRef = useRef(0);
-  const cueTimestampRef = useRef(cueTimestamp);
-  const bpmRef = useRef(bpm);
-
-  const activeSequence = useRef("");
-  const runningSequence = useRef("");
-  const sequenceColorModeRef = useRef(sequenceColorMode);
-  const sequenceColorRef = useRef(sequenceColor);
-  const sequenceDimmingRef = useRef(sequenceDimming);
-
-  const activeAccent = useRef("");
-  const runningAccent = useRef("");
-  const accentColorModeRef = useRef(accentColorMode);
-  const accentColorRef = useRef(accentColor);
-  const accentDimmingRef = useRef(accentDimming);
-
-  const queueRef = useRef<{
-    sequence?: string;
-    sequenceColorMode?: string;
-    sequenceColor?: Color;
-    accent?: string;
-    accentColorMode?: string;
-    accentColor?: Color;
-  }>({});
-
-  const currentBeat = useRef(-1);
-  const currentTick = useRef(-1);
+  const lighting = useRef(createLightingLoopState());
 
   const loopInterval = useRef<ReturnType<typeof setInterval> | undefined>(
     undefined,
@@ -84,21 +56,6 @@ const Map = ({
     onLightsChangeRef.current = onLightsChange;
   }, [onLightsChange]);
 
-  const mulberry32 = (seed: number) => {
-    return function () {
-      let t = (seed += 0x6d2b79f5);
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  };
-
-  const getSeededItem = (array: any[], seed: number) => {
-    const rng = mulberry32(seed);
-    const index = Math.floor(rng() * array.length);
-    return array[index];
-  };
-
   const updateLight = (
     ip: number,
     config: { color?: Color; dimming?: number },
@@ -106,7 +63,7 @@ const Map = ({
     const light = lights.current[IPS.indexOf(ip)];
     if (config.color) light.color = config.color;
     if (config.dimming !== undefined) {
-      light.brightness = (1 - config.dimming) * sequenceDimmingRef.current;
+      light.brightness = (1 - config.dimming) * lighting.current.sequenceDimming;
     }
     const element = lightRefs.current[IPS.indexOf(ip)];
     if (element) {
@@ -116,119 +73,8 @@ const Map = ({
   };
 
   const loop = () => {
-    const time = Date.now();
-    const seed = Math.round(
-      (time - cueTimestampRef.current) / (60000 / bpmRef.current) +
-        seedShiftRef.current,
-    );
-    const beat =
-      ((time - cueTimestampRef.current) / (60000 / bpmRef.current)) % 16;
-    const beatFloor = Math.floor(beat);
-    const tick = (beat - beatFloor) * 4;
-    const tickFloor = Math.floor(tick);
-    if (currentBeat.current === beatFloor && currentTick.current === tickFloor)
-      return;
-    currentBeat.current = beatFloor;
-    currentTick.current = tickFloor;
-
-    // console.log(`${currentBeat.current + 1}/${currentTick.current + 1}`);
-
-    if (!(currentBeat.current % 4) && currentTick.current === 0) {
-      if (queueRef.current.sequence) {
-        activeSequence.current = queueRef.current.sequence;
-        runningSequence.current = queueRef.current.sequence;
-      }
-      if (queueRef.current.sequenceColorMode)
-        sequenceColorModeRef.current = queueRef.current.sequenceColorMode;
-      if (queueRef.current.sequenceColor)
-        sequenceColorRef.current = queueRef.current.sequenceColor;
-      if (queueRef.current.accent || queueRef.current.accent === "") {
-        activeAccent.current = queueRef.current.accent;
-        runningAccent.current = queueRef.current.accent;
-      }
-      if (queueRef.current.accentColorMode)
-        accentColorModeRef.current = queueRef.current.accentColorMode;
-      if (queueRef.current.accentColor)
-        accentColorRef.current = queueRef.current.accentColor;
-      queueRef.current = {};
-    }
-
-    if (!(currentBeat.current % 4) && currentTick.current === 0) {
-      if (activeSequence.current === "random") {
-        const availableSequences = sequenceOrder.filter(
-          (sequence) => sequence !== runningSequence.current,
-        );
-        runningSequence.current = getSeededItem(availableSequences, seed);
-      }
-      if (activeAccent.current === "random")
-        runningAccent.current = getSeededItem(accentOrder, seed);
-    }
-
-    if (!(currentBeat.current % 2) && currentTick.current === 0) {
-      if (sequenceColorModeRef.current === COLOR_MODES[0]) {
-        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
-      }
-      if (accentColorModeRef.current === COLOR_MODES[0]) {
-        accentColorRef.current = getSeededItem(
-          ACCENT_COLORS,
-          seed + ACCENT_COLORS.length / 2,
-        );
-      }
-    }
-
-    const lightMap: Record<number, { color?: Color; dimming?: number }> = {};
-
-    const sequenceTimeline =
-      sequences[runningSequence.current]?.timeline({
-        beat: currentBeat.current,
-        tick: currentTick.current,
-      }) || [];
-    const sequenceTimelineBeats = sequenceTimeline.length / 4;
-    const sequenceTimelineData =
-      sequenceTimeline[
-        (currentBeat.current % sequenceTimelineBeats) * 4 + currentTick.current
-      ];
-    if (sequenceTimelineData) {
-      if (
-        sequenceColorModeRef.current === COLOR_MODES[1] &&
-        !(currentTick.current % 2)
-      ) {
-        sequenceColorRef.current = getSeededItem(ACTIVE_COLORS, seed);
-      }
-      sequenceTimelineData.forEach((data: any) => {
-        [...(data.ips || IPS)].forEach((ip) => {
-          lightMap[ip] = {};
-          lightMap[ip].dimming = data.dimming;
-          lightMap[ip].color = sequenceColorRef.current;
-          if (data.randomDimming) {
-            lightMap[ip].dimming =
-              Math.random() * (data.randomDimming[1] - data.randomDimming[0]) +
-              data.randomDimming[0];
-          }
-        });
-      });
-    }
-
-    const accentTimeline =
-      accents[runningAccent.current]?.timeline({
-        beat: currentBeat.current,
-        tick: currentTick.current,
-      }) || [];
-    const accentTimelineBeats = accentTimeline.length / 4;
-    const accentTimelineData =
-      accentTimeline[
-        (currentBeat.current % accentTimelineBeats) * 4 + currentTick.current
-      ];
-    if (accentTimelineData) {
-      accentTimelineData.forEach((data: any) => {
-        data.ips.forEach((ip: number) => {
-          if (!lightMap[ip]) lightMap[ip] = {};
-          lightMap[ip].dimming = data.dimming;
-          lightMap[ip].color = accentColorRef.current;
-        });
-      });
-    }
-
+    const lightMap = advanceLightingLoop(lighting.current);
+    if (!lightMap) return;
     for (const [ip, params] of Object.entries(lightMap)) {
       updateLight(parseInt(ip), params);
     }
@@ -237,8 +83,8 @@ const Map = ({
 
   const startLoop = () => {
     if (!loopInterval.current) {
-      currentBeat.current = -1;
-      currentTick.current = -1;
+      lighting.current.currentBeat = -1;
+      lighting.current.currentTick = -1;
       loop();
       loopInterval.current = setInterval(loop, 1000 / 60);
     }
@@ -254,48 +100,49 @@ const Map = ({
   useEffect(() => () => stopLoop(), []);
 
   useEffect(() => {
-    cueTimestampRef.current = cueTimestamp;
+    lighting.current.cueTimestamp = cueTimestamp;
   }, [cueTimestamp]);
 
   useEffect(() => {
-    seedShiftRef.current = seedShift;
+    lighting.current.seedShift = seedShift;
   }, [seedShift]);
 
   useEffect(() => {
-    bpmRef.current = bpm;
+    lighting.current.bpm = bpm;
   }, [bpm]);
 
   useEffect(() => {
-    if (sequenceColorMode)
-      queueRef.current.sequenceColorMode = sequenceColorMode;
-    if (sequenceColor) queueRef.current.sequenceColor = sequenceColor;
-    if (accent || accent === "") queueRef.current.accent = accent;
-    if (accentColorMode) queueRef.current.accentColorMode = accentColorMode;
-    if (accentColor) queueRef.current.accentColor = accentColor;
+    queueLightingUpdate(lighting.current, {
+      sequenceColorMode,
+      sequenceColor,
+      accent,
+      accentColorMode,
+      accentColor,
+    });
   }, [sequenceColorMode, sequenceColor, accent, accentColorMode, accentColor]);
 
   useEffect(() => {
     if (sequence) {
-      if (activeSequence.current) {
-        queueRef.current.sequence = sequence;
+      if (lighting.current.activeSequence) {
+        queueLightingUpdate(lighting.current, { sequence });
       } else {
-        activeSequence.current = sequence;
-        runningSequence.current = sequence;
+        lighting.current.activeSequence = sequence;
+        lighting.current.runningSequence = sequence;
       }
       startLoop();
     } else {
       stopLoop();
-      activeSequence.current = "";
-      runningSequence.current = "";
+      lighting.current.activeSequence = "";
+      lighting.current.runningSequence = "";
     }
   }, [sequence]);
 
   useEffect(() => {
-    sequenceDimmingRef.current = sequenceDimming;
+    lighting.current.sequenceDimming = sequenceDimming;
   }, [sequenceDimming]);
 
   useEffect(() => {
-    accentDimmingRef.current = accentDimming;
+    lighting.current.accentDimming = accentDimming;
   }, [accentDimming]);
 
   return (

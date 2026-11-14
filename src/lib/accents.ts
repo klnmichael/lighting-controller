@@ -1,4 +1,9 @@
 import { IPS } from "./constants.ts";
+import type {
+  AccentTimelineData,
+  LightingPattern,
+  TimelinePosition,
+} from "./timeline.ts";
 
 let cachedIPs1: number[] = [];
 
@@ -12,7 +17,11 @@ const cacheIps = (count: number) => {
   }
 };
 
-const drum = (beat: number, tick: number, count: number) => {
+const drum = (
+  beat: number,
+  tick: number,
+  count: number,
+): AccentTimelineData[][] => {
   if (beat % 2 === 0 && tick === 0) cacheIps(count);
   return [
     [{ ips: cachedIPs1, dimming: 0 }],
@@ -26,7 +35,11 @@ const drum = (beat: number, tick: number, count: number) => {
   ];
 };
 
-const snare = (beat: number, tick: number, count: number) => {
+const snare = (
+  beat: number,
+  tick: number,
+  count: number,
+): AccentTimelineData[][] => {
   if (beat % 2 === 0 && tick === 0) cacheIps(count);
   return [
     [],
@@ -40,32 +53,30 @@ const snare = (beat: number, tick: number, count: number) => {
   ];
 };
 
-export const accents: {
-  [name: string]: any;
-} = {
+export const accents: Record<string, LightingPattern<AccentTimelineData>> = {
   drum2: {
     title: "2 Drum",
-    timeline: ({ beat, tick }: any) => drum(beat, tick, 2),
+    timeline: ({ beat, tick }: TimelinePosition) => drum(beat, tick, 2),
   },
   drum4: {
     title: "4 Drum",
-    timeline: ({ beat, tick }: any) => drum(beat, tick, 4),
+    timeline: ({ beat, tick }: TimelinePosition) => drum(beat, tick, 4),
   },
   drum8: {
     title: "8 Drum",
-    timeline: ({ beat, tick }: any) => drum(beat, tick, 8),
+    timeline: ({ beat, tick }: TimelinePosition) => drum(beat, tick, 8),
   },
   snare2: {
     title: "2 Snare",
-    timeline: ({ beat, tick }: any) => snare(beat, tick, 2),
+    timeline: ({ beat, tick }: TimelinePosition) => snare(beat, tick, 2),
   },
   snare4: {
     title: "4 Snare",
-    timeline: ({ beat, tick }: any) => snare(beat, tick, 4),
+    timeline: ({ beat, tick }: TimelinePosition) => snare(beat, tick, 4),
   },
   snare8: {
     title: "8 Snare",
-    timeline: ({ beat, tick }: any) => snare(beat, tick, 8),
+    timeline: ({ beat, tick }: TimelinePosition) => snare(beat, tick, 8),
   },
 };
 

@@ -2,15 +2,12 @@ import express from "express";
 import cors from "cors";
 import ip from "ip";
 import { createWizSender } from "./wiz-sender.ts";
-import type { Color, WizLight } from "../src/types/global.ts";
+import type { WizLight } from "../src/types/global.ts";
 import {
-  ACCENT_COLORS,
-  ACTIVE_COLORS,
-  COLOR_MODES,
-  IPS,
-} from "../src/lib/constants.ts";
-import { sequenceOrder, sequences } from "../src/lib/sequences/index.ts";
-import { accentOrder, accents } from "../src/lib/accents.ts";
+  advanceLightingLoop,
+  createLightingLoopState,
+  queueLightingUpdate,
+} from "../src/lib/lighting-loop.ts";
 
 const app = express();
 const wizSender = createWizSender();
@@ -19,50 +16,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-let seedShift = 0;
-let cueTimestamp = 0;
-let bpm = 120;
-
-let activeSequence = "";
-let runningSequence = "";
-let sequenceColorMode = "random";
-let sequenceColor: Color = [255, 255, 255];
-let sequenceDimming = 1;
-
-let activeAccent = "";
-let runningAccent = "";
-let accentColorMode = "random";
-let accentColor: Color = [255, 255, 255];
-let accentDimming = 1;
-
-let queue: {
-  sequence?: string;
-  sequenceColorMode?: string;
-  sequenceColor?: Color;
-  accent?: string;
-  accentColorMode?: string;
-  accentColor?: Color;
-} = {};
-
-let currentBeat = -1;
-let currentTick = -1;
+const lighting = createLightingLoopState();
 
 let loopInterval: ReturnType<typeof setInterval> | undefined = undefined;
-
-const mulberry32 = (seed: number) => {
-  return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-const getSeededItem = (array: any[], seed: number) => {
-  const rng = mulberry32(seed);
-  const index = Math.floor(rng() * array.length);
-  return array[index];
-};
 
 const buildParams = (config: WizLight): WizLight => {
   const params: WizLight = {
@@ -78,7 +34,8 @@ const buildParams = (config: WizLight): WizLight => {
   }
 
   if (config.dimming !== undefined) {
-    params.dimming = (100 - config.dimming * 100) * sequenceDimming;
+    params.dimming =
+      (100 - config.dimming * 100) * lighting.sequenceDimming;
   }
 
   if (config.color) {
@@ -102,102 +59,8 @@ const buildParams = (config: WizLight): WizLight => {
 };
 
 const loop = () => {
-  const time = Date.now() + 120; // WIZ light delay 80 - 220ms
-  const seed = Math.round((time - cueTimestamp) / (60000 / bpm) + seedShift);
-  const beat = ((time - cueTimestamp) / (60000 / bpm)) % 16;
-  const beatFloor = Math.floor(beat);
-  const tick = (beat - beatFloor) * 4;
-  const tickFloor = Math.floor(tick);
-  if (currentBeat === beatFloor && currentTick === tickFloor) return;
-  currentBeat = beatFloor;
-  currentTick = tickFloor;
-
-  // console.log(`${currentBeat + 1}/${currentTick + 1}`);
-
-  if (!(currentBeat % 4) && currentTick === 0) {
-    if (queue.sequence) {
-      activeSequence = queue.sequence;
-      runningSequence = queue.sequence;
-    }
-    if (queue.sequenceColorMode) sequenceColorMode = queue.sequenceColorMode;
-    if (queue.sequenceColor) sequenceColor = queue.sequenceColor;
-    if (queue.accent || queue.accent === "") {
-      activeAccent = queue.accent;
-      runningAccent = queue.accent;
-    }
-    if (queue.accentColorMode) accentColorMode = queue.accentColorMode;
-    if (queue.accentColor) accentColor = queue.accentColor;
-    queue = {};
-  }
-
-  if (!(currentBeat % 4) && currentTick === 0) {
-    if (activeSequence === "random") {
-      const availableSequences = sequenceOrder.filter(
-        (sequence) => sequence !== runningSequence,
-      );
-      runningSequence = getSeededItem(availableSequences, seed);
-    }
-    if (activeAccent === "random")
-      runningAccent = getSeededItem(accentOrder, seed);
-  }
-
-  if (!(currentBeat % 2) && currentTick === 0) {
-    if (sequenceColorMode === COLOR_MODES[0]) {
-      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
-    }
-    if (accentColorMode === COLOR_MODES[0]) {
-      accentColor = getSeededItem(
-        ACCENT_COLORS,
-        seed + ACCENT_COLORS.length / 2,
-      );
-    }
-  }
-
-  const lightMap: Record<number, { color?: Color; dimming?: number }> = {};
-
-  const sequenceTimeline =
-    sequences[runningSequence]?.timeline({
-      beat: currentBeat,
-      tick: currentTick,
-    }) || [];
-  const sequenceTimelineBeats = sequenceTimeline.length / 4;
-  const sequenceTimelineData =
-    sequenceTimeline[(currentBeat % sequenceTimelineBeats) * 4 + currentTick];
-  if (sequenceTimelineData) {
-    if (sequenceColorMode === COLOR_MODES[1] && !(currentTick % 2)) {
-      sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
-    }
-    sequenceTimelineData.forEach((data: any) => {
-      [...(data.ips || IPS)].forEach((ip) => {
-        lightMap[ip] = {};
-        lightMap[ip].dimming = data.dimming;
-        lightMap[ip].color = sequenceColor;
-        if (data.randomDimming) {
-          lightMap[ip].dimming =
-            Math.random() * (data.randomDimming[1] - data.randomDimming[0]) +
-            data.randomDimming[0];
-        }
-      });
-    });
-  }
-
-  const accentTimeline =
-    accents[runningAccent]?.timeline({
-      beat: currentBeat,
-      tick: currentTick,
-    }) || [];
-  const accentTimelineBeats = accentTimeline.length / 4;
-  const accentTimelineData =
-    accentTimeline[(currentBeat % accentTimelineBeats) * 4 + currentTick];
-  if (accentTimelineData) {
-    accentTimelineData.forEach((data: any) => {
-      data.ips.forEach((ip: number) => {
-        if (!lightMap[ip]) lightMap[ip] = {};
-        lightMap[ip].dimming = data.dimming + (1 - accentDimming);
-        lightMap[ip].color = accentColor;
-      });
-    });
-  }
+  const lightMap = advanceLightingLoop(lighting, Date.now(), 120);
+  if (!lightMap) return;
   for (const [ip, config] of Object.entries(lightMap)) {
     wizSender.update(Number(ip), buildParams(config));
   }
@@ -205,8 +68,8 @@ const loop = () => {
 
 const startLoop = () => {
   if (!loopInterval) {
-    currentBeat = -1;
-    currentTick = -1;
+    lighting.currentBeat = -1;
+    lighting.currentTick = -1;
     loop();
     loopInterval = setInterval(loop, 1000 / 60);
   }
@@ -226,37 +89,39 @@ app.get("/", async (_, res) => {
 
 app.get("/settings", async (_, res) => {
   res.status(200).json({
-    cueTimestamp,
-    seedShift,
-    bpm,
-    sequence: queue.sequence || activeSequence,
-    sequenceColorMode: queue.sequenceColorMode || sequenceColorMode,
-    sequenceColor: queue.sequenceColor || sequenceColor,
-    sequenceDimming,
-    accent: queue.accent || activeAccent,
-    accentColorMode: queue.accentColorMode || accentColorMode,
-    accentColor: queue.accentColor || accentColor,
-    accentDimming,
+    cueTimestamp: lighting.cueTimestamp,
+    seedShift: lighting.seedShift,
+    bpm: lighting.bpm,
+    sequence: lighting.queue.sequence || lighting.activeSequence,
+    sequenceColorMode:
+      lighting.queue.sequenceColorMode || lighting.sequenceColorMode,
+    sequenceColor: lighting.queue.sequenceColor || lighting.sequenceColor,
+    sequenceDimming: lighting.sequenceDimming,
+    accent: lighting.queue.accent || lighting.activeAccent,
+    accentColorMode:
+      lighting.queue.accentColorMode || lighting.accentColorMode,
+    accentColor: lighting.queue.accentColor || lighting.accentColor,
+    accentDimming: lighting.accentDimming,
   });
 });
 
 app.post("/toggle", async (_, res) => {
   stopLoop();
-  activeSequence = "";
-  runningSequence = "";
+  lighting.activeSequence = "";
+  lighting.runningSequence = "";
   res.status(200).json({});
 });
 
 app.post("/cue", async (req, res) => {
   console.log(req.body);
-  cueTimestamp = req.body.timestamp;
-  seedShift = req.body.seedShift;
+  lighting.cueTimestamp = req.body.timestamp;
+  lighting.seedShift = req.body.seedShift;
   res.status(200).json({});
 });
 
 app.post("/bpm", async (req, res) => {
   console.log(req.body);
-  bpm = req.body.bpm;
+  lighting.bpm = req.body.bpm;
   res.status(200).json({});
 });
 
@@ -264,18 +129,18 @@ app.post("/sequence", async (req, res) => {
   console.log(req.body);
   const { timestamp, sequence } = req.body;
   if (sequence) {
-    if (activeSequence && sequence !== activeSequence) {
-      queue.sequence = sequence;
+    if (lighting.activeSequence && sequence !== lighting.activeSequence) {
+      queueLightingUpdate(lighting, { sequence });
     } else {
-      cueTimestamp = timestamp;
-      activeSequence = sequence;
-      runningSequence = sequence;
+      lighting.cueTimestamp = timestamp;
+      lighting.activeSequence = sequence;
+      lighting.runningSequence = sequence;
       startLoop();
     }
   } else {
     stopLoop();
-    activeSequence = "";
-    runningSequence = "";
+    lighting.activeSequence = "";
+    lighting.runningSequence = "";
   }
   res.status(200).json({});
 });
@@ -289,11 +154,13 @@ app.post("/update", async (req, res) => {
     accentColorMode,
     accentColor,
   } = req.body;
-  if (sequenceColorMode) queue.sequenceColorMode = sequenceColorMode;
-  if (sequenceColor) queue.sequenceColor = sequenceColor;
-  if (accent || accent === "") queue.accent = accent;
-  if (accentColorMode) queue.accentColorMode = accentColorMode;
-  if (accentColor) queue.accentColor = accentColor;
+  queueLightingUpdate(lighting, {
+    sequenceColorMode,
+    sequenceColor,
+    accent,
+    accentColorMode,
+    accentColor,
+  });
   res.status(200).json({});
 });
 
@@ -303,9 +170,9 @@ app.post("/dimming", async (req, res) => {
     accentDimming: updatedAccentDimming,
   } = req.body;
   if (updatedSequenceDimming || updatedSequenceDimming === 0)
-    sequenceDimming = updatedSequenceDimming;
+    lighting.sequenceDimming = updatedSequenceDimming;
   if (updatedAccentDimming || updatedAccentDimming === 0)
-    accentDimming = updatedAccentDimming;
+    lighting.accentDimming = updatedAccentDimming;
   res.status(200).json({});
 });
 

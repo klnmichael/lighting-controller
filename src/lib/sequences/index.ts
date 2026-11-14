@@ -8,6 +8,12 @@ import {
   ROWS_X,
 } from "../constants.ts";
 import {
+  createCachedTimeline,
+  type LightingPattern,
+  type LightingTimeline,
+  type TimelinePosition,
+} from "../timeline.ts";
+import {
   waveWindowDoor,
   waveDoorWindow,
   waveAlternating,
@@ -28,7 +34,10 @@ const trailDimming = (head: number, position: number, tailLength: number) => {
   return Math.min(1, distance / tailLength, OUTLINE.length - distance);
 };
 
-const circleTimeline = (streakCount: 1 | 2, direction: 1 | -1 = 1) => {
+const circleTimeline = (
+  streakCount: 1 | 2,
+  direction: 1 | -1 = 1,
+): LightingTimeline => {
   const ticks = 16;
   const tailLength = 4;
   return Array.from({ length: ticks }, (_, tick) => {
@@ -50,33 +59,41 @@ const circleTimeline = (streakCount: 1 | 2, direction: 1 | -1 = 1) => {
   });
 };
 
-export const sequences: {
-  [name: string]: any;
-} = {
+export const sequences: Record<string, LightingPattern> = {
   dark: {
     title: "Dark",
-    timeline: () => [[{ dimming: 1 }], [], [], []],
+    timeline: createCachedTimeline(() => [[{ dimming: 1 }], [], [], []]),
   },
   full: {
     title: "Full",
-    timeline: () => [[{ dimming: 0 }], [], [], []],
+    timeline: createCachedTimeline(() => [[{ dimming: 0 }], [], [], []]),
   },
   twinkle: {
     title: "Twinkle",
-    timeline: () => [[{ randomDimming: [0.25, 1] }], [], [], []],
+    timeline: createCachedTimeline(() => [
+      [{ randomDimming: [0.25, 1] }],
+      [],
+      [],
+      [],
+    ]),
   },
   twinkleFast: {
     title: "Twinkle Fast",
-    timeline: () => [
+    timeline: createCachedTimeline(() => [
       [{ randomDimming: [0.5, 1] }],
       [],
       [{ randomDimming: [0.5, 1] }],
       [],
-    ],
+    ]),
   },
   flash: {
     title: "Flash",
-    timeline: () => [[{ dimming: 0 }], [], [{ dimming: 1 }], []],
+    timeline: createCachedTimeline(() => [
+      [{ dimming: 0 }],
+      [],
+      [{ dimming: 1 }],
+      [],
+    ]),
   },
   waveWindowDoor,
   waveDoorWindow,
@@ -87,7 +104,7 @@ export const sequences: {
   waveKitchenWall,
   pulsate: {
     title: "Pulsate",
-    timeline: ({ beat, tick }: any) => {
+    timeline: ({ beat, tick }: TimelinePosition) => {
       if (beat % 4 === 0 && tick === 0) {
         cachedIPs1 = [];
         cachedIPs2 = [];
@@ -205,23 +222,23 @@ export const sequences: {
   },
   circle1: {
     title: "1 Circle",
-    timeline: () => circleTimeline(1),
+    timeline: createCachedTimeline(() => circleTimeline(1)),
   },
   circle1Reverse: {
     title: "1 Circle Reverse",
-    timeline: () => circleTimeline(1, -1),
+    timeline: createCachedTimeline(() => circleTimeline(1, -1)),
   },
   circle2: {
     title: "2 Circle",
-    timeline: () => circleTimeline(2),
+    timeline: createCachedTimeline(() => circleTimeline(2)),
   },
   circle2Reverse: {
     title: "2 Circle Reverse",
-    timeline: () => circleTimeline(2, -1),
+    timeline: createCachedTimeline(() => circleTimeline(2, -1)),
   },
   waveBounce: {
     title: "Wave Bounce",
-    timeline: () =>
+    timeline: createCachedTimeline(() =>
       Array.from({ length: 16 }, (_, tick) => {
         const head = (1 - Math.abs(tick / 8 - 1)) * (ROWS_X.length - 1);
         return [
@@ -232,10 +249,11 @@ export const sequences: {
           })),
         ];
       }),
+    ),
   },
   radialRipple: {
     title: "Radial Ripple",
-    timeline: () =>
+    timeline: createCachedTimeline(() =>
       Array.from({ length: 16 }, (_, tick) => [
         { dimming: 1 },
         ...RADIAL.map((ring, position) => ({
@@ -246,10 +264,11 @@ export const sequences: {
             2,
         })),
       ]),
+    ),
   },
   zoneCrossfade: {
     title: "Zone Crossfade",
-    timeline: () => {
+    timeline: createCachedTimeline(() => {
       const zones = [COUCH, KITCHEN, DANCE];
       return Array.from({ length: 16 }, (_, tick) => {
         const head = (tick * zones.length) / 16;
@@ -264,11 +283,11 @@ export const sequences: {
           },
         ];
       });
-    },
+    }),
   },
   orbitCollision: {
     title: "Orbit Collision",
-    timeline: () =>
+    timeline: createCachedTimeline(() =>
       Array.from({ length: 16 }, (_, tick) => {
         const head = (tick / 16) * OUTLINE.length;
         return [
@@ -282,6 +301,7 @@ export const sequences: {
           })),
         ];
       }),
+    ),
   },
 };
 
