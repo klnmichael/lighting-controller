@@ -99,6 +99,8 @@ const CONTROLLER_MAP_LABELS = [
 export interface ControlsProps {
   activeLighting: ActiveLighting;
   hubUrl: string;
+  remoteEnabled: boolean;
+  remotePassword: string;
   hubStatus: string;
   hubConnectionState: HubConnectionState;
   cueTimestamp: number;
@@ -114,6 +116,8 @@ export interface ControlsProps {
   gamepadName: string;
   lightbar: ReturnType<typeof useControllerLightbar>;
   onHubUrlChange: (hubUrl: string) => void;
+  onRemoteEnabledChange: (enabled: boolean) => void;
+  onRemotePasswordChange: (password: string) => void;
   onToggle: () => void;
   onCue: (timestamp: number) => void;
   onBpm: (bpm: number) => void;
@@ -133,6 +137,8 @@ export interface ControlsProps {
 const Controls = ({
   activeLighting,
   hubUrl,
+  remoteEnabled,
+  remotePassword,
   hubStatus,
   hubConnectionState,
   cueTimestamp,
@@ -148,6 +154,8 @@ const Controls = ({
   gamepadName,
   lightbar,
   onHubUrlChange,
+  onRemoteEnabledChange,
+  onRemotePasswordChange,
   onToggle,
   onCue,
   onBpm,
@@ -240,20 +248,41 @@ const Controls = ({
               className={styles.hubInput}
               data-connection={hubConnectionState}
             >
-              <input
-                type="url"
-                value={hubUrl}
-                placeholder="0.0.0.0:3001"
-                aria-label="Hub URL"
-                aria-describedby={hubStatusId}
-                title={hubStatus}
-                onChange={(e) => onHubUrlChange(e.target.value)}
-              />
+              {remoteEnabled ? (
+                <input
+                  type="password"
+                  value={remotePassword}
+                  placeholder="Remote passphrase"
+                  aria-label="Remote passphrase"
+                  aria-describedby={hubStatusId}
+                  title={hubStatus}
+                  autoComplete="off"
+                  onChange={(e) => onRemotePasswordChange(e.target.value)}
+                />
+              ) : (
+                <input
+                  type="url"
+                  value={hubUrl}
+                  placeholder="0.0.0.0:3001"
+                  aria-label="Hub URL"
+                  aria-describedby={hubStatusId}
+                  title={hubStatus}
+                  onChange={(e) => onHubUrlChange(e.target.value)}
+                />
+              )}
             </span>
           </label>
           <span id={hubStatusId} className={styles.hubStatus} role="status">
             {hubStatus}
           </span>
+          <label className={styles.hubMode}>
+            <input
+              type="checkbox"
+              checked={remoteEnabled}
+              onChange={(e) => onRemoteEnabledChange(e.target.checked)}
+            />
+            Remote (Apinator)
+          </label>
           <details className={styles.gamepad}>
             <summary>{gamepadName ? gamepadName : "PS5 Controller"}</summary>
             <div>

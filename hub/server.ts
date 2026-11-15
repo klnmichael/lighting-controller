@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { WebSocket, WebSocketServer } from "ws";
 import { createWizSender } from "./wiz-sender.ts";
+import { createApinatorBridge } from "./apinator.ts";
 import type { WizLight } from "../src/types/global.ts";
 import { isHubCommand, type HubCommand } from "../src/lib/hub-protocol.ts";
 import {
@@ -59,12 +60,14 @@ app.use((req, res, next) => {
   next();
 });
 
-const snapshot = () => JSON.stringify({ type: "state", lighting });
+const getSnapshot = () => ({ type: "state" as const, lighting });
+const snapshot = () => JSON.stringify(getSnapshot());
 const broadcast = () => {
   const message = snapshot();
   for (const socket of sockets) {
     if (socket.readyState === WebSocket.OPEN) socket.send(message);
   }
+  remote?.publishState();
 };
 
 const buildParams = (config: WizLight): WizLight => {
@@ -171,6 +174,8 @@ const applyCommand = (command: HubCommand) => {
   broadcast();
 };
 
+const remote = createApinatorBridge(getSnapshot, applyCommand);
+
 app.get("/settings", (_req, res) => {
   res.json({
     cueTimestamp: lighting.cueTimestamp,
@@ -275,6 +280,7 @@ const heartbeat = setInterval(() => {
 
 const shutdown = () => {
   clearInterval(heartbeat);
+  remote?.close();
   stopLoop();
   wizSender.close();
   for (const socket of websocketServer.clients) socket.terminate();

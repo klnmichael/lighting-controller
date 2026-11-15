@@ -2,6 +2,16 @@
 # yarn lockfile v1
 
 
+"@apinator/client@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@apinator/client/-/client-2.3.0.tgz#26186fd9b1b77ed82464ec4014aaee0af63b862a"
+  integrity sha512-N2O98MTZ4N1H0a5beEXfWuSQWjJqz/Pp8nSQ16Ew1AF1atGjyx0x6oYiumkCLVHzutl2BOab2zu3n26a0QQdBw==
+
+"@apinator/server@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@apinator/server/-/server-2.2.0.tgz#5584e7a6e1fa4bafc4165794540917199158a4a7"
+  integrity sha512-roEw4+YxKqj17pL2votfV7SQ36XDE7l18toO83cCe3gFpiMopsITzM3v6264088QRJHknqxhHEmTiu5qEeZxmQ==
+
 "@babel/code-frame@^7.29.7":
   version "7.29.7"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.29.7.tgz#f2fbbfea87c44a21590ec515b778b2c26d8866e7"

@@ -27,6 +27,26 @@ const isColor = (value: unknown): value is Color =>
   value.length === 3 &&
   value.every((channel) => Number.isInteger(channel) && channel >= 0 && channel <= 255);
 
+export function isHubSnapshot(value: unknown): value is HubSnapshot {
+  if (!value || typeof value !== "object" || !("type" in value) ||
+    value.type !== "state" || !("lighting" in value) ||
+    !value.lighting || typeof value.lighting !== "object") return false;
+  const lighting = value.lighting as Record<string, unknown>;
+  if (!lighting.queue || typeof lighting.queue !== "object" || Array.isArray(lighting.queue)) return false;
+  const queue = lighting.queue as Record<string, unknown>;
+  const stringFields = ["activeSequence", "runningSequence", "activeAccent", "runningAccent",
+    "sequenceColorMode", "accentColorMode"];
+  const numberFields = ["cueTimestamp", "seedShift", "bpm", "sequenceDimming", "accentDimming",
+    "currentBeat", "currentTick"];
+  const queuedStrings = ["sequence", "accent", "sequenceColorMode", "accentColorMode"];
+  return stringFields.every((field) => typeof lighting[field] === "string") &&
+    numberFields.every((field) => typeof lighting[field] === "number" && Number.isFinite(lighting[field])) &&
+    isColor(lighting.sequenceColor) && isColor(lighting.accentColor) &&
+    queuedStrings.every((field) => queue[field] === undefined || typeof queue[field] === "string") &&
+    (queue.sequenceColor === undefined || isColor(queue.sequenceColor)) &&
+    (queue.accentColor === undefined || isColor(queue.accentColor));
+}
+
 export function isHubCommand(value: unknown): value is HubCommand {
   if (!value || typeof value !== "object" || !("type" in value)) return false;
   const command = value as Record<string, unknown>;
