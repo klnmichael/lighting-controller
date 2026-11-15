@@ -25,7 +25,7 @@ interfaces (`0.0.0.0:3000`) by default; use a different port if Next.js is using
 Configure the exact browser origin(s):
 
 ```bash
-export HUB_ALLOWED_ORIGINS="http://192.168.50.150:3000,http://localhost:3000"
+export HUB_ALLOWED_ORIGINS="https://lighting-controller.vercel.app,http://192.168.50.150:3000,http://localhost:3000"
 HUB_PORT=3001 yarn hub
 ```
 
@@ -34,15 +34,15 @@ HUB_PORT=3001 yarn hub
 Create an Apinator app and enable client events in its settings. Configure the
 following environment variables in Vercel, then redeploy the client:
 
-| Variable | Value |
-| --- | --- |
-| `NEXT_PUBLIC_APINATOR_KEY` | Apinator app key (public) |
-| `NEXT_PUBLIC_APINATOR_CLUSTER` | App cluster: `us` or `eu` |
-| `APINATOR_APP_ID` | Apinator app ID |
-| `APINATOR_KEY` | The same Apinator app key |
-| `APINATOR_SECRET` | Apinator app secret |
-| `APINATOR_CLUSTER` | The same app cluster |
-| `APINATOR_CONTROL_PASSWORD` | A separate, randomly generated passphrase |
+| Variable                       | Value                                     |
+| ------------------------------ | ----------------------------------------- |
+| `NEXT_PUBLIC_APINATOR_KEY`     | Apinator app key (public)                 |
+| `NEXT_PUBLIC_APINATOR_CLUSTER` | App cluster: `us` or `eu`                 |
+| `APINATOR_APP_ID`              | Apinator app ID                           |
+| `APINATOR_KEY`                 | The same Apinator app key                 |
+| `APINATOR_SECRET`              | Apinator app secret                       |
+| `APINATOR_CLUSTER`             | The same app cluster                      |
+| `APINATOR_CONTROL_PASSWORD`    | A separate, randomly generated passphrase |
 
 Use the same `APINATOR_APP_ID`, `APINATOR_KEY`, `APINATOR_SECRET`,
 `APINATOR_CLUSTER`, and `APINATOR_CONTROL_PASSWORD` in the hub's environment.
@@ -71,14 +71,11 @@ unauthenticated, so restrict the hub port to a trusted network or use
 `HUB_HOST=127.0.0.1`. Remote clients must be able to reach the deployed auth
 route, and the hub must be running for controls to work.
 
-Run `node --experimental-test-module-mocks --test hub/apinator.test.mjs hub/socket.test.mjs`
-to check the relay and local socket (Node.js 22.18 or newer).
-
 ## TODO
 
-- Settings overlay
-  - Light hub URL
-  - Color pallets for both sequences and accents
+- Settings
+  - Light hub URL and remote passphrase
+  - Editable layouts and color pallets for both sequences and accents
   - Controller mapping
-  - Sequence builder?
-- Bluetooth light timeline
+- Bluetooth light hook
+- Sequence builder?

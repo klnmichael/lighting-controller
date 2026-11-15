@@ -4,6 +4,8 @@ import WebSocket from "ws";
 import { APINATOR_CHANNEL, isSyncRequest, type SyncRequest } from "../src/lib/apinator-protocol.ts";
 import { isHubCommand, type HubCommand, type HubSnapshot } from "../src/lib/hub-protocol.ts";
 
+const STATE_THROTTLE_MS = 150;
+
 export function createApinatorBridge(
   getSnapshot: () => HubSnapshot,
   applyCommand: (command: HubCommand) => void,
@@ -44,7 +46,14 @@ export function createApinatorBridge(
   let stopped = false;
   let flushing = false;
   let pendingState = false;
+  let lastStateKey = "";
+  let lastStateAt = 0;
+  let stateTimer: ReturnType<typeof setTimeout> | undefined;
   const pendingSync = new Map<string, SyncRequest>();
+
+  // Beat/tick counters change constantly but remote clients derive them locally.
+  const stateKey = (snapshot: HubSnapshot) =>
+    JSON.stringify({ ...snapshot.lighting, currentBeat: 0, currentTick: 0 });
 
   const flush = async () => {
     if (flushing || !subscribed || stopped) return;
@@ -52,10 +61,30 @@ export function createApinatorBridge(
     try {
       while (subscribed && !stopped && (pendingState || pendingSync.size)) {
         const sync = pendingSync.values().next().value;
+        const snapshot = getSnapshot();
+        const key = stateKey(snapshot);
+        if (!sync) {
+          if (key === lastStateKey) {
+            pendingState = false;
+            break;
+          }
+          const wait = lastStateAt + STATE_THROTTLE_MS - Date.now();
+          if (wait > 0) {
+            stateTimer ??= setTimeout(() => {
+              stateTimer = undefined;
+              void flush();
+            }, wait);
+            break;
+          }
+        }
         if (sync) pendingSync.delete(sync.id);
-        else pendingState = false;
+        // Every subscriber accepts the snapshot in a sync reply, so it also
+        // satisfies any pending state publish.
+        pendingState = false;
+        lastStateKey = key;
+        lastStateAt = Date.now();
         const payload = {
-          ...getSnapshot(),
+          ...snapshot,
           ...(sync ? { requestId: sync.id, clientTime: sync.clientTime, serverTime: Date.now() } : {}),
         };
         try {
@@ -65,18 +94,20 @@ export function createApinatorBridge(
             data: JSON.stringify(payload),
           });
         } catch (error) {
+          lastStateKey = "";
           console.error("Apinator state publish failed:", error);
         }
       }
     } finally {
       flushing = false;
-      if (subscribed && !stopped && (pendingState || pendingSync.size)) void flush();
+      if (subscribed && !stopped && !stateTimer && (pendingState || pendingSync.size)) void flush();
     }
   };
 
   channel.bind("realtime:subscription_succeeded", () => {
     subscribed = true;
     pendingState = true;
+    lastStateKey = "";
     void flush();
     console.log("Apinator remote control connected");
   });
@@ -123,6 +154,7 @@ export function createApinatorBridge(
     close() {
       stopped = true;
       pendingSync.clear();
+      if (stateTimer) clearTimeout(stateTimer);
       client.disconnect();
     },
   };

@@ -22,7 +22,9 @@ const allowedOrigins = (process.env.HUB_ALLOWED_ORIGINS ?? "")
   .filter(Boolean);
 
 if (allowedOrigins.length === 0 || (token !== undefined && token.length < 32)) {
-  throw new Error("Set HUB_ALLOWED_ORIGINS and, if using HTTP endpoints, a HUB_TOKEN of at least 32 characters.");
+  throw new Error(
+    "Set HUB_ALLOWED_ORIGINS and, if using HTTP endpoints, a HUB_TOKEN of at least 32 characters.",
+  );
 }
 
 const authorized = (candidate: unknown): boolean => {
@@ -40,11 +42,13 @@ const lighting = createLightingLoopState();
 const sockets = new Set<WebSocket>();
 let loopInterval: ReturnType<typeof setInterval> | undefined;
 
-app.use(cors({
-  origin(origin, callback) {
-    callback(null, originAllowed(origin));
-  },
-}));
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, originAllowed(origin));
+    },
+  }),
+);
 app.use(express.json({ limit: "8kb" }));
 app.use((req, res, next) => {
   if (!originAllowed(req.headers.origin)) {
@@ -52,11 +56,16 @@ app.use((req, res, next) => {
     return;
   }
   if (!token) {
-    res.status(503).json({ error: "HTTP access is disabled; configure HUB_TOKEN" });
+    res
+      .status(503)
+      .json({ error: "HTTP access is disabled; configure HUB_TOKEN" });
     return;
   }
   const authorization = req.headers.authorization;
-  if (!authorization?.startsWith("Bearer ") || !authorized(authorization.slice(7))) {
+  if (
+    !authorization?.startsWith("Bearer ") ||
+    !authorized(authorization.slice(7))
+  ) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
@@ -132,6 +141,7 @@ const stopLoop = () => {
 };
 
 const applyCommand = (command: HubCommand) => {
+  console.log(command);
   switch (command.type) {
     case "toggle":
       stopLoop();
@@ -149,7 +159,10 @@ const applyCommand = (command: HubCommand) => {
       break;
     case "sequence":
       if (command.sequence) {
-        if (lighting.activeSequence && command.sequence !== lighting.activeSequence) {
+        if (
+          lighting.activeSequence &&
+          command.sequence !== lighting.activeSequence
+        ) {
           queueLightingUpdate(lighting, { sequence: command.sequence });
         } else {
           delete lighting.queue.sequence;
@@ -185,7 +198,8 @@ app.get("/settings", (_req, res) => {
     seedShift: lighting.seedShift,
     bpm: lighting.bpm,
     sequence: lighting.queue.sequence ?? lighting.activeSequence,
-    sequenceColorMode: lighting.queue.sequenceColorMode ?? lighting.sequenceColorMode,
+    sequenceColorMode:
+      lighting.queue.sequenceColorMode ?? lighting.sequenceColorMode,
     sequenceColor: lighting.queue.sequenceColor ?? lighting.sequenceColor,
     sequenceDimming: lighting.sequenceDimming,
     accent: lighting.queue.accent ?? lighting.activeAccent,
@@ -196,32 +210,55 @@ app.get("/settings", (_req, res) => {
 });
 
 // Keep the existing HTTP endpoints available to authenticated integrations.
-app.post(["/toggle", "/cue", "/bpm", "/sequence", "/update", "/dimming"], (req, res) => {
-  const body: Record<string, unknown> = req.body ?? {};
-  let candidates: unknown[];
-  switch (req.path) {
-    case "/toggle": candidates = [{ type: "toggle" }]; break;
-    case "/cue": candidates = [{ type: "cue", seedShift: body.seedShift }]; break;
-    case "/bpm": candidates = [{ type: "bpm", bpm: body.bpm }]; break;
-    case "/sequence": candidates = [{ type: "sequence", sequence: body.sequence }]; break;
-    default:
-      candidates = Object.entries(body).map(([type, value]) => ({ type, value }));
-  }
-  if (candidates.length === 0 || !candidates.every(isHubCommand)) {
-    res.status(400).json({ error: "Invalid command" });
-    return;
-  }
-  for (const command of candidates) {
-    if (isHubCommand(command)) applyCommand(command);
-  }
-  res.json({});
-});
+app.post(
+  ["/toggle", "/cue", "/bpm", "/sequence", "/update", "/dimming"],
+  (req, res) => {
+    const body: Record<string, unknown> = req.body ?? {};
+    let candidates: unknown[];
+    switch (req.path) {
+      case "/toggle":
+        candidates = [{ type: "toggle" }];
+        break;
+      case "/cue":
+        candidates = [{ type: "cue", seedShift: body.seedShift }];
+        break;
+      case "/bpm":
+        candidates = [{ type: "bpm", bpm: body.bpm }];
+        break;
+      case "/sequence":
+        candidates = [{ type: "sequence", sequence: body.sequence }];
+        break;
+      default:
+        candidates = Object.entries(body).map(([type, value]) => ({
+          type,
+          value,
+        }));
+    }
+    if (candidates.length === 0 || !candidates.every(isHubCommand)) {
+      res.status(400).json({ error: "Invalid command" });
+      return;
+    }
+    for (const command of candidates) {
+      if (isHubCommand(command)) applyCommand(command);
+    }
+    res.json({});
+  },
+);
 
-const server = app.listen(Number(process.env.HUB_PORT ?? 3000), process.env.HUB_HOST ?? "0.0.0.0", () => {
-  const address = server.address();
-  console.log(`Hub listening on ${typeof address === "object" && address ? `${address.address}:${address.port}` : address}`);
+const server = app.listen(
+  Number(process.env.HUB_PORT ?? 3000),
+  process.env.HUB_HOST ?? "0.0.0.0",
+  () => {
+    const address = server.address();
+    console.log(
+      `Hub listening on ${typeof address === "object" && address ? `${address.address}:${address.port}` : address}`,
+    );
+  },
+);
+const websocketServer = new WebSocketServer({
+  noServer: true,
+  maxPayload: 8192,
 });
-const websocketServer = new WebSocketServer({ noServer: true, maxPayload: 8192 });
 const aliveSockets = new WeakSet<WebSocket>();
 server.on("upgrade", (request, socket, head) => {
   if (request.url !== "/sync" || !originAllowed(request.headers.origin)) {
@@ -260,12 +297,24 @@ websocketServer.on("connection", (socket) => {
       return;
     }
     const record = message as Record<string, unknown>;
-    if (record.type === "ping" && typeof record.clientTime === "number" && Number.isFinite(record.clientTime)) {
-      socket.send(JSON.stringify({ type: "pong", clientTime: record.clientTime, serverTime: Date.now() }));
+    if (
+      record.type === "ping" &&
+      typeof record.clientTime === "number" &&
+      Number.isFinite(record.clientTime)
+    ) {
+      socket.send(
+        JSON.stringify({
+          type: "pong",
+          clientTime: record.clientTime,
+          serverTime: Date.now(),
+        }),
+      );
     } else if (isHubCommand(message)) {
       applyCommand(message);
     } else {
-      socket.send(JSON.stringify({ type: "error", message: "Invalid command", lighting }));
+      socket.send(
+        JSON.stringify({ type: "error", message: "Invalid command", lighting }),
+      );
     }
   });
 });
