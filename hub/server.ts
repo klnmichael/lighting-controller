@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import nextEnv from "@next/env";
 import express from "express";
 import cors from "cors";
 import { WebSocket, WebSocketServer } from "ws";
@@ -11,6 +12,8 @@ import {
   createLightingLoopState,
   queueLightingUpdate,
 } from "../src/lib/lighting-loop.ts";
+
+nextEnv.loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
 const token = process.env.HUB_TOKEN;
 const allowedOrigins = (process.env.HUB_ALLOWED_ORIGINS ?? "")

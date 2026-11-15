@@ -1,6 +1,6 @@
 {
   "name": "lighting-controller",
-  "version": "2.14.0",
+  "version": "2.14.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
   "dependencies": {
     "@apinator/client": "^2.3.0",
     "@apinator/server": "^2.2.0",
+    "@next/env": "16.4.6",
     "dgram": "^1.0.1",
     "extendable-media-recorder": "^9.2.40",
     "next": "16.4.6",

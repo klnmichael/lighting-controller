@@ -46,6 +46,8 @@ following environment variables in Vercel, then redeploy the client:
 
 Use the same `APINATOR_APP_ID`, `APINATOR_KEY`, `APINATOR_SECRET`,
 `APINATOR_CLUSTER`, and `APINATOR_CONTROL_PASSWORD` in the hub's environment.
+When started from the project root, the hub loads `.env` and `.env.local` using
+Next.js environment precedence; explicitly exported variables take priority.
 Also set
 `APINATOR_AUTH_URL=https://lighting-controller.vercel.app/api/apinator/auth`
 on the hub and restart it. For local development, the auth URL may use HTTP
