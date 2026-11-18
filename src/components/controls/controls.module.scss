@@ -104,19 +104,6 @@
   white-space: nowrap;
   border: 0;
 }
-.hubMode {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: white;
-  font-size: max(0.7rem, 0.8vw);
-
-  input {
-    width: auto;
-    height: auto;
-    margin: 0;
-  }
-}
 .listen {
   opacity: 0.25;
 }
@@ -339,29 +326,21 @@
       flex: 0 0 calc((100% - 1vw) / 2);
       transition: none;
 
-      &[data-active="true"] {
-        box-shadow:
-          0 0.5vw 1vw rgba(0, 0, 0, 0.75),
-          0 0 0 1vw rgba(0, 0, 0, 1) inset;
-      }
-
-      &[data-queued="true"] {
-        animation-name: queued-color-pulse;
+      &:before {
+        box-shadow: 0 0 1.25vw rgba(1, 1, 1, 0.5) inset;
       }
     }
+    .shuffle {
+      color: #000;
+    }
   }
+}
 
-  @keyframes queued-color-pulse {
-    0%,
-    100% {
-      box-shadow:
-        0 0.5vw 1vw rgba(0, 0, 0, 0.75),
-        0 0 0 0.5vw rgba(0, 0, 0, 0.5) inset;
-    }
-    50% {
-      box-shadow:
-        0 0.5vw 1vw rgba(0, 0, 0, 0.75),
-        0 0 0 0.75vw rgba(0, 0, 0, 1) inset;
-    }
-  }
+.shuffle {
+  position: relative;
+  z-index: 1;
+  width: 35%;
+  height: 35%;
+  display: block;
+  margin: auto;
 }

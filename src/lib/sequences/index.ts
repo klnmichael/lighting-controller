@@ -9,6 +9,7 @@ import {
 } from "../constants.ts";
 import {
   createCachedTimeline,
+  seededIps,
   type LightingPattern,
   type LightingTimeline,
   type TimelinePosition,
@@ -22,11 +23,6 @@ import {
   waveWallKitchen,
   waveKitchenWall,
 } from "./wave.ts";
-
-let cachedIPs1: number[] = [];
-let cachedIPs2: number[] = [];
-let cachedIPs3: number[] = [];
-let cachedIPs4: number[] = [];
 
 const trailDimming = (head: number, position: number, tailLength: number) => {
   const distance = (head - position + OUTLINE.length) % OUTLINE.length;
@@ -77,15 +73,6 @@ export const sequences: Record<string, LightingPattern> = {
       [],
     ]),
   },
-  twinkleFast: {
-    title: "Twinkle Fast",
-    timeline: createCachedTimeline(() => [
-      [{ randomDimming: [0.5, 1] }],
-      [],
-      [{ randomDimming: [0.5, 1] }],
-      [],
-    ]),
-  },
   flash: {
     title: "Flash",
     timeline: createCachedTimeline(() => [
@@ -104,34 +91,13 @@ export const sequences: Record<string, LightingPattern> = {
   waveKitchenWall,
   pulsate: {
     title: "Pulsate",
-    timeline: ({ beat, tick }: TimelinePosition) => {
-      if (beat % 4 === 0 && tick === 0) {
-        cachedIPs1 = [];
-        cachedIPs2 = [];
-        cachedIPs3 = [];
-        cachedIPs4 = [];
-        const ips = [...IPS];
-        for (let i = 0; i < 6; ++i) {
-          const index = Math.floor(Math.random() * IPS.length);
-          cachedIPs1.push(IPS[index]);
-          ips.splice(index, 1);
-        }
-        for (let i = 0; i < 2; ++i) {
-          const index = Math.floor(Math.random() * IPS.length);
-          cachedIPs2.push(IPS[index]);
-          ips.splice(index, 1);
-        }
-        for (let i = 0; i < 6; ++i) {
-          const index = Math.floor(Math.random() * IPS.length);
-          cachedIPs3.push(IPS[index]);
-          ips.splice(index, 1);
-        }
-        for (let i = 0; i < 4; ++i) {
-          const index = Math.floor(Math.random() * IPS.length);
-          cachedIPs4.push(IPS[index]);
-          ips.splice(index, 1);
-        }
-      }
+    timeline: (position: TimelinePosition) => {
+      // One duplicate-free pick of 18 lights per 4 beats, split into groups.
+      const picked = seededIps(position, "pulsate", 18, 4);
+      const cachedIPs1 = picked.slice(0, 6);
+      const cachedIPs2 = picked.slice(6, 8);
+      const cachedIPs3 = picked.slice(8, 14);
+      const cachedIPs4 = picked.slice(14, 18);
       return [
         [
           { ips: IPS, dimming: 1 },
@@ -285,42 +251,40 @@ export const sequences: Record<string, LightingPattern> = {
   //     });
   //   }),
   // },
-  orbitCollision: {
-    title: "Orbit Collision",
-    timeline: createCachedTimeline(() =>
-      Array.from({ length: 16 }, (_, tick) => {
-        const head = (tick / 16) * OUTLINE.length;
-        return [
-          { dimming: 1 },
-          ...OUTLINE.map((index, position) => ({
-            ips: [IPS[index]],
-            dimming: Math.min(
-              trailDimming(head, position, 4),
-              trailDimming(head, -position, 4),
-            ),
-          })),
-        ];
-      }),
-    ),
-  },
+  // orbitCollision: {
+  //   title: "Orbit Collision",
+  //   timeline: createCachedTimeline(() =>
+  //     Array.from({ length: 16 }, (_, tick) => {
+  //       const head = (tick / 16) * OUTLINE.length;
+  //       return [
+  //         { dimming: 1 },
+  //         ...OUTLINE.map((index, position) => ({
+  //           ips: [IPS[index]],
+  //           dimming: Math.min(
+  //             trailDimming(head, position, 4),
+  //             trailDimming(head, -position, 4),
+  //           ),
+  //         })),
+  //       ];
+  //     }),
+  //   ),
+  // },
 };
 
 export const sequenceOrder = [
   "twinkle",
-  "twinkleFast",
   "pulsate",
-  "radialRipple",
   "waveWindowDoor",
   "waveDoorWindow",
   "waveAlternating",
-  "waveRadiateOut",
-  "waveRadiateIn",
   "waveWallKitchen",
   "waveKitchenWall",
   "waveBounce",
+  "waveRadiateOut",
+  "waveRadiateIn",
+  "radialRipple",
   "circle1",
   "circle1Reverse",
   "circle2",
   "circle2Reverse",
-  "orbitCollision",
 ];

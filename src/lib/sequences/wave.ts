@@ -170,8 +170,6 @@ const waveXTimeline = (rows: number[][]): LightingTimeline => {
   ];
 };
 
-let alternatingCached = 0;
-
 export const waveWindowDoor = {
   title: "Wave Window Door",
   timeline: createCachedTimeline(() => waveYTimeline([...ROWS_Y])),
@@ -184,9 +182,11 @@ export const waveDoorWindow = {
 
 export const waveAlternating = {
   title: "Wave Alternating",
-  timeline: ({ beat, tick }: TimelinePosition) => {
-    if (!(beat % 2) && tick === 0) alternatingCached = ++alternatingCached % 2;
-    const rows = !alternatingCached ? [...ROWS_Y] : [...ROWS_Y].reverse();
+  timeline: ({ beat }: TimelinePosition) => {
+    // Derived from the beat (not toggled per call) so several engines, such
+    // as the button previews, can share this timeline.
+    const rows =
+      Math.floor(beat / 2) % 2 ? [...ROWS_Y] : [...ROWS_Y].reverse();
     return waveYTimeline(rows);
   },
 };

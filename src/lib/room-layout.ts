@@ -1,3 +1,5 @@
+import { LIGHTS } from "./constants.ts";
+
 export const BLUEPRINT_WIDTH = 523;
 export const BLUEPRINT_DEPTH = 671;
 export const BLUEPRINT_SCALE = 0.01;
@@ -14,16 +16,9 @@ export const ROOM_OUTLINE: readonly (readonly [number, number])[] = [
   [523, 0],
 ];
 
-// Percentages from the original map, in IPS order (not a regularized grid).
-export const LIGHT_POSITIONS: readonly (readonly [number, number])[] = [
-  [11.4, 8.9], [31.6, 8.9], [50.1, 8.9], [67, 8.9], [85.6, 8.9],
-  [62, 16.2], [74, 16.2], [85.6, 16.2],
-  [11.4, 28.8], [31.6, 28.8], [50.1, 28.8], [67, 28.8], [85.6, 28.8],
-  [19.2, 49.4], [39.4, 49.4], [57.9, 49.4],
-  [19.2, 63.8], [57.9, 63.8],
-  [19.2, 78], [57.9, 78],
-  [19.2, 92.5], [39.4, 92.5], [57.9, 92.5],
-];
+// Percentages from the original map, in LIGHTS order.
+export const LIGHT_POSITIONS: readonly (readonly [number, number])[] =
+  LIGHTS.map((light) => light.position);
 
 export function blueprintToWorld(x: number, y: number): [number, number] {
   return [

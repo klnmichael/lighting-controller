@@ -25,26 +25,66 @@ export interface HubSnapshot {
 const isColor = (value: unknown): value is Color =>
   Array.isArray(value) &&
   value.length === 3 &&
-  value.every((channel) => Number.isInteger(channel) && channel >= 0 && channel <= 255);
+  value.every(
+    (channel) => Number.isInteger(channel) && channel >= 0 && channel <= 255,
+  );
 
 export function isHubSnapshot(value: unknown): value is HubSnapshot {
-  if (!value || typeof value !== "object" || !("type" in value) ||
-    value.type !== "state" || !("lighting" in value) ||
-    !value.lighting || typeof value.lighting !== "object") return false;
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("type" in value) ||
+    value.type !== "state" ||
+    !("lighting" in value) ||
+    !value.lighting ||
+    typeof value.lighting !== "object"
+  )
+    return false;
   const lighting = value.lighting as Record<string, unknown>;
-  if (!lighting.queue || typeof lighting.queue !== "object" || Array.isArray(lighting.queue)) return false;
+  if (
+    !lighting.queue ||
+    typeof lighting.queue !== "object" ||
+    Array.isArray(lighting.queue)
+  )
+    return false;
   const queue = lighting.queue as Record<string, unknown>;
-  const stringFields = ["activeSequence", "runningSequence", "activeAccent", "runningAccent",
-    "sequenceColorMode", "accentColorMode"];
-  const numberFields = ["cueTimestamp", "seedShift", "bpm", "sequenceDimming", "accentDimming",
-    "currentBeat", "currentTick"];
-  const queuedStrings = ["sequence", "accent", "sequenceColorMode", "accentColorMode"];
-  return stringFields.every((field) => typeof lighting[field] === "string") &&
-    numberFields.every((field) => typeof lighting[field] === "number" && Number.isFinite(lighting[field])) &&
-    isColor(lighting.sequenceColor) && isColor(lighting.accentColor) &&
-    queuedStrings.every((field) => queue[field] === undefined || typeof queue[field] === "string") &&
+  const stringFields = [
+    "activeSequence",
+    "runningSequence",
+    "activeAccent",
+    "runningAccent",
+    "sequenceColorMode",
+    "accentColorMode",
+  ];
+  const numberFields = [
+    "cueTimestamp",
+    "seedShift",
+    "bpm",
+    "sequenceDimming",
+    "accentDimming",
+    "currentBeat",
+    "currentTick",
+  ];
+  const queuedStrings = [
+    "sequence",
+    "accent",
+    "sequenceColorMode",
+    "accentColorMode",
+  ];
+  return (
+    stringFields.every((field) => typeof lighting[field] === "string") &&
+    numberFields.every(
+      (field) =>
+        typeof lighting[field] === "number" && Number.isFinite(lighting[field]),
+    ) &&
+    isColor(lighting.sequenceColor) &&
+    isColor(lighting.accentColor) &&
+    queuedStrings.every(
+      (field) => queue[field] === undefined || typeof queue[field] === "string",
+    ) &&
     (queue.sequenceColor === undefined || isColor(queue.sequenceColor)) &&
-    (queue.accentColor === undefined || isColor(queue.accentColor));
+    (queue.accentColor === undefined || isColor(queue.accentColor))
+  );
 }
 
 export function isHubCommand(value: unknown): value is HubCommand {
@@ -54,30 +94,49 @@ export function isHubCommand(value: unknown): value is HubCommand {
     case "toggle":
       return true;
     case "cue":
-      return Number.isInteger(command.seedShift) &&
+      return (
+        Number.isInteger(command.seedShift) &&
         typeof command.seedShift === "number" &&
-        command.seedShift >= 0 && command.seedShift <= 999;
+        command.seedShift >= 0 &&
+        command.seedShift <= 999
+      );
     case "bpm":
-      return typeof command.bpm === "number" &&
-        Number.isFinite(command.bpm) && command.bpm >= 1 && command.bpm <= 400;
+      return (
+        typeof command.bpm === "number" &&
+        Number.isFinite(command.bpm) &&
+        command.bpm >= 1 &&
+        command.bpm <= 400
+      );
     case "sequence":
-      return typeof command.sequence === "string" &&
-        (command.sequence === "" || command.sequence === "random" ||
-          Object.hasOwn(sequences, command.sequence));
+      return (
+        typeof command.sequence === "string" &&
+        (command.sequence === "" ||
+          command.sequence === "shuffle" ||
+          Object.hasOwn(sequences, command.sequence))
+      );
     case "accent":
-      return typeof command.value === "string" &&
-        (command.value === "" || command.value === "random" ||
-          Object.hasOwn(accents, command.value));
+      return (
+        typeof command.value === "string" &&
+        (command.value === "" ||
+          command.value === "shuffle" ||
+          Object.hasOwn(accents, command.value))
+      );
     case "sequenceColorMode":
     case "accentColorMode":
-      return typeof command.value === "string" && COLOR_MODES.includes(command.value);
+      return (
+        typeof command.value === "string" && COLOR_MODES.includes(command.value)
+      );
     case "sequenceColor":
     case "accentColor":
       return isColor(command.value);
     case "sequenceDimming":
     case "accentDimming":
-      return typeof command.value === "number" &&
-        Number.isFinite(command.value) && command.value >= 0 && command.value <= 1;
+      return (
+        typeof command.value === "number" &&
+        Number.isFinite(command.value) &&
+        command.value >= 0 &&
+        command.value <= 1
+      );
     default:
       return false;
   }

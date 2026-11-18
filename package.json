@@ -1,6 +1,6 @@
 {
   "name": "lighting-controller",
-  "version": "2.14.2",
+  "version": "2.15.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,8 +11,6 @@
     "hub": "nodemon --exec ts-node ./hub/server.ts"
   },
   "dependencies": {
-    "@apinator/client": "^2.3.0",
-    "@apinator/server": "^2.2.0",
     "@next/env": "16.4.6",
     "dgram": "^1.0.1",
     "extendable-media-recorder": "^9.2.40",

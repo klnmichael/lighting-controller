@@ -1,82 +1,55 @@
 import dgram from "node:dgram";
 import type { WizLight } from "../src/types/global.ts";
+import type { LightFixture } from "../src/lib/constants.ts";
+import { LIGHT_BRANDS } from "../src/lib/constants.ts";
+import type { LightSample } from "../src/lib/light-map.ts";
+import type { LightDriver } from "../src/lib/light-output.ts";
+import { createUdpSender } from "./udp-sender.ts";
 
-interface LightSocket {
-  bind(): void;
-  send(
-    buffer: Uint8Array,
-    port: number,
-    address: string,
-    callback: (error: Error | null) => void,
-  ): void;
-  on(event: "error", listener: (error: Error) => void): void;
-  close(): void;
-}
+const WIZ_PORT = 38899;
 
-export const createWizSender = (
-  socket: LightSocket = dgram.createSocket("udp4"),
-) => {
-  const pending = new Map<number, WizLight>();
-  const inFlight = new Set<number>();
-  let closed = false;
-
+export const createWizSender = (socket = dgram.createSocket("udp4")) => {
   // socket.on("error", (error) => {
   //   console.error("WiZ UDP socket error:", error);
   // });
   socket.bind();
-
-  const flush = (ip: number) => {
-    if (closed || inFlight.has(ip)) return;
-    const params = pending.get(ip);
-    if (!params) return;
-    pending.delete(ip);
-    inFlight.add(ip);
-
-    const complete = (error: unknown) => {
-      inFlight.delete(ip);
-      // if (error) console.error(`WiZ send failed for 192.168.50.${ip}:`, error);
-      flush(ip);
-    };
-
-    try {
-      socket.send(
-        Buffer.from(JSON.stringify({ method: "setPilot", params })),
-        38899,
-        `192.168.50.${ip}`,
-        complete,
-      );
-    } catch (error) {
-      complete(error);
-    }
-  };
-
+  const udp = createUdpSender(socket);
   return {
-    update(ip: number, params: WizLight) {
-      if (closed) throw new Error("WiZ sender is closed");
+    update(ip: string, params: WizLight) {
       // These are resolved frame parameters, not patches to earlier frames.
-      pending.set(ip, { ...params });
-      flush(ip);
+      udp.update(
+        ip,
+        WIZ_PORT,
+        Buffer.from(JSON.stringify({ method: "setPilot", params })),
+      );
     },
-    clearPending() {
-      pending.clear();
-    },
-    close() {
-      if (closed) return;
-      closed = true;
-      pending.clear();
-      inFlight.clear();
-      try {
-        socket.close();
-      } catch (error) {
-        // A failed bind can leave the socket already stopped.
-        if (
-          !(error instanceof Error) ||
-          !("code" in error) ||
-          error.code !== "ERR_SOCKET_DGRAM_NOT_RUNNING"
-        ) {
-          throw error;
-        }
-      }
-    },
+    clearPending: udp.clearPending,
+    close: udp.close,
+  };
+};
+
+export type WizSender = ReturnType<typeof createWizSender>;
+
+export const encodeWiz = ({ color, brightness }: LightSample): WizLight => {
+  const [r, g, b] = color.map(Math.round);
+  let dimming = brightness * 100;
+  // Full white is much brighter than saturated colors; tame it.
+  if (r + g + b === 255 * 3) dimming *= 0.75;
+  return { r, g, b, dimming: Math.round(dimming) };
+};
+
+export const createWizDriver = (
+  sender: WizSender,
+  fixtures: readonly LightFixture[],
+): LightDriver<WizLight> => {
+  const addresses = new Map(
+    fixtures.flatMap((light) => (light.ip ? [[light.id, light.ip]] : [])),
+  );
+  return {
+    name: "wiz",
+    lights: [...addresses.keys()],
+    ...LIGHT_BRANDS.wiz,
+    encode: encodeWiz,
+    send: (id, params) => sender.update(addresses.get(id)!, params),
   };
 };

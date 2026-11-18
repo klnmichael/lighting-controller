@@ -4,7 +4,7 @@
   aspect-ratio: 1/1;
   background: linear-gradient(0deg, #444, #555);
   box-shadow:
-    0 0.25vw 0.75vw rgba(0, 0, 0, 1),
+    0 0.2vw 0.5vw rgba(0, 0, 0, 1),
     0 0.1rem 0 0 rgba(255, 255, 255, 0.25) inset;
   border: 0;
   overflow: hidden;
@@ -12,37 +12,49 @@
   font-size: 1.2vw;
   font-weight: 500;
   color: #fff;
-  text-shadow: 0 0.15vw 0.1vw 0 rgba(0, 0, 0, 1);
+  text-shadow: 0 0.15vw 0.1vw 0 rgba(0, 0, 0, 0.5);
   position: relative;
   transition: box-shadow 0.1s ease-in-out;
 
-  &:active {
-    transform: scale(0.9);
+  &:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle,
+      rgba(0, 0, 0, 0) 25%,
+      rgba(0, 0, 0, 0.25) 100%
+    );
+    mix-blend-mode: multiply;
   }
+  &:after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: 0 0 0 0.5vw rgba(255, 255, 255, 1) inset;
+    opacity: 0;
+  }
+  &[data-queued="true"],
   &[data-active="true"] {
-    box-shadow:
-      0 0.25vw 0.75vw rgba(0, 0, 0, 1),
-      0 0.1rem 0 0 rgba(255, 255, 255, 0.25) inset,
-      0 0 0 0.5vw rgba(255, 255, 255, 1) inset;
+    &:after {
+      opacity: 1;
+    }
+  }
+  &[data-queued="true"]:after {
+    animation: queued-pulse 0.5s ease infinite;
   }
 
-  &[data-queued="true"] {
-    animation: queued-pulse 0.5s ease infinite;
+  &:active {
+    transform: scale(0.9);
   }
 }
 
 @keyframes queued-pulse {
   0%,
   100% {
-    box-shadow:
-      0 0.25vw 0.75vw rgba(0, 0, 0, 1),
-      0 0.1rem 0 0 rgba(255, 255, 255, 0.25) inset,
-      0 0 0 0.25vw rgba(255, 255, 255, 0.25) inset;
+    box-shadow: 0 0 0 0.25vw rgba(255, 255, 255, 0) inset;
   }
   50% {
-    box-shadow:
-      0 0.25vw 0.75vw rgba(0, 0, 0, 1),
-      0 0.1rem 0 0 rgba(255, 255, 255, 0.25) inset,
-      0 0 0 0.5vw rgba(255, 255, 255, 0.75) inset;
+    box-shadow: 0 0 0 0.5vw rgba(255, 255, 255, 1) inset;
   }
 }

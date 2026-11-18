@@ -8,7 +8,6 @@ import {
   HUB_URL_STORAGE_KEY,
   SEQUENCE_COLORS,
 } from "@/lib/constants";
-import Map from "@/components/map";
 import RoomPreview from "@/components/room-preview";
 import type { RoomSceneHandle } from "@/components/room-scene";
 import { createLights, type LightState } from "@/lib/lights";
@@ -19,14 +18,20 @@ import { useControllerLightbar } from "@/lib/use-controller-lightbar";
 import { JoystickColorSelection } from "@/lib/joystick-color";
 import { TapTempo } from "@/lib/tap-tempo";
 import { useHub } from "@/lib/use-hub";
-import { useApinator } from "@/lib/use-apinator";
+import { useLightingPreview } from "@/lib/use-lighting-preview";
 import type { HubSnapshot } from "@/lib/hub-protocol";
 import {
   createLightingLoopState,
   getActiveLighting,
 } from "@/lib/lighting-loop";
 
-const GAMEPAD_SEQUENCES = ["random", "dark", "full", "flash", ...sequenceOrder];
+const GAMEPAD_SEQUENCES = [
+  "shuffle",
+  "dark",
+  "full",
+  "flash",
+  ...sequenceOrder,
+];
 
 export default function Home() {
   const lights = useRef(createLights());
@@ -71,8 +76,6 @@ export default function Home() {
   );
 
   const [hubUrl, setHubUrl] = useState("");
-  const [remoteEnabled, setRemoteEnabled] = useState(false);
-  const [remotePassword, setRemotePassword] = useState("");
   const [hubSnapshot, setHubSnapshot] = useState<HubSnapshot | null>(null);
   const [gamepadName, setGamepadName] = useState("");
   const gamepadNameRef = useRef("");
@@ -92,7 +95,9 @@ export default function Home() {
     setSeedShift(state.seedShift);
     setBpm(state.bpm);
     setSequence(state.queue.sequence ?? state.activeSequence);
-    setSequenceColorMode(state.queue.sequenceColorMode ?? state.sequenceColorMode);
+    setSequenceColorMode(
+      state.queue.sequenceColorMode ?? state.sequenceColorMode,
+    );
     setSequenceColor(state.queue.sequenceColor ?? state.sequenceColor);
     setSequenceDimming(state.sequenceDimming);
     setAccent(state.queue.accent ?? state.activeAccent);
@@ -100,10 +105,8 @@ export default function Home() {
     setAccentColor(state.queue.accentColor ?? state.accentColor);
     setAccentDimming(state.accentDimming);
   }, []);
-  const localHub = useHub(remoteEnabled ? "" : hubUrl, onHubSnapshot);
-  const remoteHub = useApinator(remoteEnabled, remotePassword, onHubSnapshot);
-  const hub = remoteEnabled ? remoteHub : localHub;
-  const hubConfigured = remoteEnabled || Boolean(hubUrl);
+  const hub = useHub(hubUrl, onHubSnapshot);
+  const hubConfigured = Boolean(hubUrl);
 
   const onToggle = () => {
     if (hubConfigured && !hub.send({ type: "toggle" })) return;
@@ -135,17 +138,29 @@ export default function Home() {
   };
 
   const onSequenceColorMode = (sequenceColorMode: string) => {
-    if (hubConfigured && !hub.send({ type: "sequenceColorMode", value: sequenceColorMode })) return;
+    if (
+      hubConfigured &&
+      !hub.send({ type: "sequenceColorMode", value: sequenceColorMode })
+    )
+      return;
     setSequenceColorMode(sequenceColorMode);
   };
 
   const onSequenceColor = (sequenceColor: Color) => {
-    if (hubConfigured && !hub.send({ type: "sequenceColor", value: sequenceColor })) return;
+    if (
+      hubConfigured &&
+      !hub.send({ type: "sequenceColor", value: sequenceColor })
+    )
+      return;
     setSequenceColor(sequenceColor);
   };
 
   const onSequenceDimming = (sequenceDimming: number) => {
-    if (hubConfigured && !hub.send({ type: "sequenceDimming", value: sequenceDimming })) return;
+    if (
+      hubConfigured &&
+      !hub.send({ type: "sequenceDimming", value: sequenceDimming })
+    )
+      return;
     setSequenceDimming(sequenceDimming);
   };
 
@@ -155,12 +170,17 @@ export default function Home() {
   };
 
   const onAccentColorMode = (accentColorMode: string) => {
-    if (hubConfigured && !hub.send({ type: "accentColorMode", value: accentColorMode })) return;
+    if (
+      hubConfigured &&
+      !hub.send({ type: "accentColorMode", value: accentColorMode })
+    )
+      return;
     setAccentColorMode(accentColorMode);
   };
 
   const onAccentColor = (accentColor: Color) => {
-    if (hubConfigured && !hub.send({ type: "accentColor", value: accentColor })) return;
+    if (hubConfigured && !hub.send({ type: "accentColor", value: accentColor }))
+      return;
     setAccentColor(accentColor);
   };
 
@@ -171,7 +191,11 @@ export default function Home() {
   );
 
   const onAccentDimming = (accentDimming: number) => {
-    if (hubConfigured && !hub.send({ type: "accentDimming", value: accentDimming })) return;
+    if (
+      hubConfigured &&
+      !hub.send({ type: "accentDimming", value: accentDimming })
+    )
+      return;
     setAccentDimming(accentDimming);
   };
 
@@ -283,8 +307,8 @@ export default function Home() {
         if (justPressed(0)) actions.onToggle();
         if (justPressed(1)) actions.onCue(Date.now());
         if (justPressed(2)) {
-          actions.onSequence(Date.now(), "random");
-          actions.onAccent("random");
+          actions.onSequence(Date.now(), "shuffle");
+          actions.onAccent("shuffle");
         }
         if (justPressed(3)) actions.onSequence(Date.now(), "dark");
         if (justPressed(17)) actions.onAccent("");
@@ -385,30 +409,29 @@ export default function Home() {
     if (storedHubUrl) setHubUrl(storedHubUrl);
   }, []);
 
+  useLightingPreview({
+    cueTimestamp,
+    seedShift,
+    bpm,
+    sequence,
+    sequenceColorMode,
+    sequenceColor,
+    sequenceDimming,
+    accent,
+    accentColorMode,
+    accentColor,
+    accentDimming,
+    hubSnapshot: hubConfigured ? hubSnapshot : null,
+    clockOffset: hub.clockOffset,
+    onLightsChange,
+    onActiveLightingChange: setActiveLighting,
+  });
+
   return (
     <>
-      <Map
-        cueTimestamp={cueTimestamp}
-        seedShift={seedShift}
-        bpm={bpm}
-        sequence={sequence}
-        sequenceColorMode={sequenceColorMode}
-        sequenceColor={sequenceColor}
-        sequenceDimming={sequenceDimming}
-        accent={accent}
-        accentColorMode={accentColorMode}
-        accentColor={accentColor}
-        accentDimming={accentDimming}
-        hubSnapshot={hubConfigured ? hubSnapshot : null}
-        clockOffset={hub.clockOffset}
-        onLightsChange={onLightsChange}
-        onActiveLightingChange={setActiveLighting}
-      />
       <Controls
         activeLighting={activeLighting}
         hubUrl={hubUrl}
-        remoteEnabled={remoteEnabled}
-        remotePassword={remotePassword}
         hubStatus={hub.status}
         hubConnectionState={hub.connectionState}
         cueTimestamp={cueTimestamp}
@@ -424,14 +447,6 @@ export default function Home() {
         gamepadName={gamepadName}
         lightbar={lightbar}
         onHubUrlChange={onHubUrlChange}
-        onRemoteEnabledChange={(enabled) => {
-          setHubSnapshot(null);
-          setRemoteEnabled(enabled);
-        }}
-        onRemotePasswordChange={(password) => {
-          setHubSnapshot(null);
-          setRemotePassword(password);
-        }}
         onToggle={onToggle}
         onCue={onCue}
         onBpm={onBpm}

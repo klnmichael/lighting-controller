@@ -14,10 +14,6 @@ yarn install
 yarn dev
 ```
 
-Sequence, accent, and color buttons pulse with an inset shadow while their
-selection is queued for the next four-beat boundary. Applied selections have a
-steady inset shadow. Reduced-motion preferences disable the pulse.
-
 ## Start Hub
 
 The hub runs on the same local network as the lights. It listens on all IPv4
@@ -25,56 +21,40 @@ interfaces (`0.0.0.0:3000`) by default; use a different port if Next.js is using
 Configure the exact browser origin(s):
 
 ```bash
-export HUB_ALLOWED_ORIGINS="https://lighting-controller.vercel.app,http://192.168.50.150:3000,http://localhost:3000"
+export HUB_ALLOWED_ORIGINS="https://lighting-controller.vercel.app,http://localhost:3000"
 HUB_PORT=3001 yarn hub
 ```
 
-## Remote control with Apinator
+## Lights
 
-Create an Apinator app and enable client events in its settings. Configure the
-following environment variables in Vercel, then redeploy the client:
+Every light is listed in `LIGHTS` in `src/lib/constants.ts` with its brand,
+address and floor plan position. Per-brand latency and update rate live in
+`LIGHT_BRANDS` next to it.
 
-| Variable                       | Value                                     |
-| ------------------------------ | ----------------------------------------- |
-| `NEXT_PUBLIC_APINATOR_KEY`     | Apinator app key (public)                 |
-| `NEXT_PUBLIC_APINATOR_CLUSTER` | App cluster: `us` or `eu`                 |
-| `APINATOR_APP_ID`              | Apinator app ID                           |
-| `APINATOR_KEY`                 | The same Apinator app key                 |
-| `APINATOR_SECRET`              | Apinator app secret                       |
-| `APINATOR_CLUSTER`             | The same app cluster                      |
-| `APINATOR_CONTROL_PASSWORD`    | A separate, randomly generated passphrase |
+### Govee
 
-Use the same `APINATOR_APP_ID`, `APINATOR_KEY`, `APINATOR_SECRET`,
-`APINATOR_CLUSTER`, and `APINATOR_CONTROL_PASSWORD` in the hub's environment.
-When started from the project root, the hub loads `.env` and `.env.local` using
-Next.js environment precedence; explicitly exported variables take priority.
-Also set
-`APINATOR_AUTH_URL=https://lighting-controller.vercel.app/api/apinator/auth`
-on the hub and restart it. For local development, the auth URL may use HTTP
-only on localhost. All variables must be present to enable the relay.
+1. Enable **LAN Control** for each light in the Govee Home app.
+2. Add the light to `LIGHTS` with `brand: "govee"`, an unused `id`, and its
+   `device` ID and/or `ip`. Lights with a `device` ID are found by LAN scan,
+   so their IP can change. Unknown Govee devices that answer the scan are
+   logged by the hub with their device ID, to copy into `LIGHTS`.
+3. The hub needs UDP port 4002 free (only one Govee LAN client per machine),
+   and multicast to `239.255.255.250:4001` allowed on the network.
 
-Generate the passphrase once with `openssl rand -hex 32`, then configure the
-same value privately on Vercel and the hub. Never commit the secret or
-passphrase, put either in a `NEXT_PUBLIC_` variable, or share them in chat.
-Set rate limiting for `/api/apinator/auth` at Vercel and restrict access to
-your deployment. Changing the passphrase prevents new subscriptions but does
-not immediately disconnect existing subscribers.
+Govee's LAN API has no transition speed, so the hub renders fades itself at
+up to 33 frames per second, in whole frames per 16th note so beats land
+exactly on a frame. Brightness is folded into the color, so each frame is one
+packet per light.
 
-On the hosted client, select **Remote (Apinator)** and enter the passphrase.
-The indicator turns green when the hub responds. The passphrase stays in memory
-and must be entered again after a reload. The hub and browser need outbound
-access to Apinator; no inbound tunnel to the hub is required. Without Apinator
-configuration, the existing local socket connection remains available.
+## Local socket security
 
-Apinator receives lighting state and commands. The local WebSocket remains
-unauthenticated, so restrict the hub port to a trusted network or use
-`HUB_HOST=127.0.0.1`. Remote clients must be able to reach the deployed auth
-route, and the hub must be running for controls to work.
+The hub's local WebSocket is unauthenticated, so restrict the hub port to a
+trusted network or use `HUB_HOST=127.0.0.1`.
 
 ## TODO
 
 - Settings
-  - Light hub URL and remote passphrase
+  - Light hub URL
   - Editable layouts and color pallets for both sequences and accents
   - Controller mapping
 - Bluetooth light hook

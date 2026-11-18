@@ -19,6 +19,7 @@ import type { HubConnectionState } from "@/lib/use-hub";
 import packageJson from "../../../package.json";
 import Button from "@/components/button";
 import Count from "@/components/count";
+import PatternPreview from "@/components/pattern-preview";
 import Slider from "@/components/slider";
 import styles from "./controls.module.scss";
 
@@ -33,6 +34,33 @@ const getColorWheelGradient = (colors: Color[]) => {
   });
   return `conic-gradient(from ${-segmentSize / 2}deg, ${stops.join(", ")})`;
 };
+
+// Hard stops: each color gets an equal-width band.
+const COLOR_GRADIENT = `linear-gradient(90deg,${ACTIVE_COLORS.map((color, index) => {
+  const start = (index / ACTIVE_COLORS.length) * 100;
+  const end = ((index + 1) / ACTIVE_COLORS.length) * 100;
+  return `rgb(${color.join(",")}) ${start}% ${end}%`;
+}).join(",")})`;
+
+const ShuffleIcon = () => (
+  <svg
+    className={styles.shuffle}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    {/* Two curved tails crossing, with a gap where the lower one passes under. */}
+    <path d="M2 18h3c5 0 7-12 12-12h4" />
+    <path d="M2 6h3c2 0 3.5 1.8 4.5 4" />
+    <path d="M12.5 14c1 2.2 2.5 4 4.5 4h4" />
+    <path d="M18 3l3 3-3 3" />
+    <path d="M18 15l3 3-3 3" />
+  </svg>
+);
 
 const CONTROLLER_MAP_LABELS = [
   {
@@ -62,8 +90,8 @@ const CONTROLLER_MAP_LABELS = [
   },
   { text: "I/O", title: "Cross: toggle output", left: "80.5%", top: "39.8%" },
   {
-    text: "Random",
-    title: "Square: random sequence and accent",
+    text: "Shuffle",
+    title: "Square: shuffle sequence and accent",
     left: "72.8%",
     top: "28.5%",
   },
@@ -84,13 +112,13 @@ const CONTROLLER_MAP_LABELS = [
   },
   {
     text: "Seq / L3 rand",
-    title: "Left stick: sequence color; L3: random sequence color",
+    title: "Left stick: sequence color; L3: shuffle sequence color",
     left: "21%",
     top: "49.1%",
   },
   {
     text: "Accent / R3 rand",
-    title: "Right stick: accent color; R3: random accent color",
+    title: "Right stick: accent color; R3: shuffle accent color",
     left: "80%",
     top: "49.1%",
   },
@@ -99,8 +127,6 @@ const CONTROLLER_MAP_LABELS = [
 export interface ControlsProps {
   activeLighting: ActiveLighting;
   hubUrl: string;
-  remoteEnabled: boolean;
-  remotePassword: string;
   hubStatus: string;
   hubConnectionState: HubConnectionState;
   cueTimestamp: number;
@@ -116,8 +142,6 @@ export interface ControlsProps {
   gamepadName: string;
   lightbar: ReturnType<typeof useControllerLightbar>;
   onHubUrlChange: (hubUrl: string) => void;
-  onRemoteEnabledChange: (enabled: boolean) => void;
-  onRemotePasswordChange: (password: string) => void;
   onToggle: () => void;
   onCue: (timestamp: number) => void;
   onBpm: (bpm: number) => void;
@@ -137,8 +161,6 @@ export interface ControlsProps {
 const Controls = ({
   activeLighting,
   hubUrl,
-  remoteEnabled,
-  remotePassword,
   hubStatus,
   hubConnectionState,
   cueTimestamp,
@@ -154,8 +176,6 @@ const Controls = ({
   gamepadName,
   lightbar,
   onHubUrlChange,
-  onRemoteEnabledChange,
-  onRemotePasswordChange,
   onToggle,
   onCue,
   onBpm,
@@ -198,6 +218,14 @@ const Controls = ({
       ...(queued ? { "data-queued": true, "aria-busy": true } : {}),
     };
   };
+  // Gradient until the shuffle runs, then the live shuffled color.
+  const colorShuffleBackground = (
+    mode: string | undefined,
+    color: Color | undefined,
+  ) =>
+    sequence && applied.activeSequence && mode === COLOR_MODES[0] && color
+      ? `rgb(${color.join(",")})`
+      : COLOR_GRADIENT;
   const colorMatches = (
     color: Color,
     selectedColor: Color | undefined,
@@ -248,47 +276,26 @@ const Controls = ({
               className={styles.hubInput}
               data-connection={hubConnectionState}
             >
-              {remoteEnabled ? (
-                <input
-                  type="password"
-                  value={remotePassword}
-                  placeholder="Remote passphrase"
-                  aria-label="Remote passphrase"
-                  aria-describedby={hubStatusId}
-                  title={hubStatus}
-                  autoComplete="off"
-                  onChange={(e) => onRemotePasswordChange(e.target.value)}
-                />
-              ) : (
-                <input
-                  type="url"
-                  value={hubUrl}
-                  placeholder="0.0.0.0:3001"
-                  aria-label="Hub URL"
-                  aria-describedby={hubStatusId}
-                  title={hubStatus}
-                  onChange={(e) => onHubUrlChange(e.target.value)}
-                />
-              )}
+              <input
+                type="url"
+                value={hubUrl}
+                placeholder="0.0.0.0:3001"
+                aria-label="Hub URL"
+                aria-describedby={hubStatusId}
+                title={hubStatus}
+                onChange={(e) => onHubUrlChange(e.target.value)}
+              />
             </span>
           </label>
           <span id={hubStatusId} className={styles.hubStatus} role="status">
             {hubStatus}
           </span>
-          <label className={styles.hubMode}>
-            <input
-              type="checkbox"
-              checked={remoteEnabled}
-              onChange={(e) => onRemoteEnabledChange(e.target.checked)}
-            />
-            Remote (Apinator)
-          </label>
           <details className={styles.gamepad}>
             <summary>{gamepadName ? gamepadName : "PS5 Controller"}</summary>
             <div>
               <p>
-                Cross: toggle output · Circle: cue · Square: random sequence and
-                accent · Triangle: dark
+                Cross: toggle output · Circle: cue · Square: shuffle sequence
+                and accent · Triangle: dark
               </p>
               <p>
                 L1/R1: previous/next sequence · Hold L2: joystick color picker ·
@@ -300,7 +307,7 @@ const Controls = ({
                 stick selects accent color. Colors run clockwise from up; tilt
                 to preview and center to apply. While holding R2, move the left
                 stick up/down for sequence brightness and the right stick
-                up/down for accent brightness. L3/R3: random sequence/accent
+                up/down for accent brightness. L3/R3: shuffle sequence/accent
                 colors.
               </p>
               <p>
@@ -468,57 +475,53 @@ const Controls = ({
       <div className={styles.pad}>
         <div className={styles.column}>
           <div className={styles.column__primary}>
-            <Button
-              onPress={() => onSequence(Date.now(), "random")}
-              {...sequenceButtonState("random")}
-            >
-              Random
-            </Button>
-            <Button
-              onPress={() => onSequence(Date.now(), "dark")}
-              {...sequenceButtonState("dark")}
-            >
-              Dark
-            </Button>
-            <Button
-              onPress={() => onSequence(Date.now(), "full")}
-              {...sequenceButtonState("full")}
-            >
-              Full
-            </Button>
-            <Button
-              onPress={() => onSequence(Date.now(), "flash")}
-              {...sequenceButtonState("flash")}
-            >
-              Flash
-            </Button>
-            {sequenceOrder.map((name) => (
-              <Button
-                key={name}
-                onPress={() => onSequence(Date.now(), name)}
-                {...sequenceButtonState(name)}
-              >
-                {sequences[name].title}
-              </Button>
-            ))}
+            {["shuffle", "dark", "full", "flash", ...sequenceOrder].map(
+              (name) => {
+                const title =
+                  name === "shuffle" ? "Shuffle" : sequences[name].title;
+                return (
+                  <Button
+                    key={name}
+                    title={title}
+                    aria-label={title}
+                    onPress={() => onSequence(Date.now(), name)}
+                    {...sequenceButtonState(name)}
+                  >
+                    {name === "shuffle" ? (
+                      <ShuffleIcon />
+                    ) : (
+                      <PatternPreview
+                        kind="sequence"
+                        pattern={name}
+                        bpm={bpm}
+                        cueTimestamp={cueTimestamp}
+                      />
+                    )}
+                  </Button>
+                );
+              },
+            )}
           </div>
           <div className={styles.column__secondary}>
             <Button
               title={COLOR_MODES[0]}
+              aria-label="Shuffle sequence color"
               style={{
-                background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
+                background: colorShuffleBackground(
+                  applied.sequenceColorMode,
+                  applied.sequenceColor,
+                ),
               }}
               {...buttonState(
                 sequenceColorMode === COLOR_MODES[0],
                 applied.sequenceColorMode === COLOR_MODES[0],
               )}
               onPress={() => onSequenceColorMode(COLOR_MODES[0])}
-            />
+            >
+              <ShuffleIcon />
+            </Button>
             <Button
               title={COLOR_MODES[1]}
-              style={{
-                background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
-              }}
               {...buttonState(
                 sequenceColorMode === COLOR_MODES[1],
                 applied.sequenceColorMode === COLOR_MODES[1],
@@ -553,34 +556,49 @@ const Controls = ({
         </div>
         <div className={styles.column}>
           <div className={styles.column__primary}>
-            <Button
-              onPress={() => onAccent("random" === accent ? "" : "random")}
-              {...accentButtonState("random")}
-            >
-              Random
-            </Button>
-            {accentOrder.map((name) => (
-              <Button
-                key={name}
-                onPress={() => onAccent(name === accent ? "" : name)}
-                {...accentButtonState(name)}
-              >
-                {accents[name].title}
-              </Button>
-            ))}
+            {["shuffle", ...accentOrder].map((name) => {
+              const title =
+                name === "shuffle" ? "Shuffle" : accents[name].title;
+              return (
+                <Button
+                  key={name}
+                  title={title}
+                  aria-label={title}
+                  onPress={() => onAccent(name === accent ? "" : name)}
+                  {...accentButtonState(name)}
+                >
+                  {name === "shuffle" ? (
+                    <ShuffleIcon />
+                  ) : (
+                    <PatternPreview
+                      kind="accent"
+                      pattern={name}
+                      bpm={bpm}
+                      cueTimestamp={cueTimestamp}
+                    />
+                  )}
+                </Button>
+              );
+            })}
           </div>
           <div className={styles.column__secondary}>
             <Button
               title={COLOR_MODES[0]}
+              aria-label="Shuffle accent color"
               style={{
-                background: `linear-gradient(90deg,${ACTIVE_COLORS.map((color) => `rgb(${color.join(",")})`).join(",")})`,
+                background: colorShuffleBackground(
+                  applied.accentColorMode,
+                  applied.accentColor,
+                ),
               }}
               {...buttonState(
                 accentColorMode === COLOR_MODES[0],
                 applied.accentColorMode === COLOR_MODES[0],
               )}
               onPress={() => onAccentColorMode(COLOR_MODES[0])}
-            />
+            >
+              <ShuffleIcon />
+            </Button>
             {ACCENT_COLORS.map((color, index) => (
               <Button
                 key={index}

@@ -3,14 +3,17 @@ import nextEnv from "@next/env";
 import express from "express";
 import cors from "cors";
 import { WebSocket, WebSocketServer } from "ws";
-import { createWizSender } from "./wiz-sender.ts";
-import { createApinatorBridge } from "./apinator.ts";
-import type { WizLight } from "../src/types/global.ts";
+import { createWizDriver, createWizSender } from "./wiz-sender.ts";
+import { createGoveeDriver, createGoveeSender } from "./govee.ts";
 import { isHubCommand, type HubCommand } from "../src/lib/hub-protocol.ts";
+import { LIGHTS } from "../src/lib/constants.ts";
+import { createLightOutput } from "../src/lib/light-output.ts";
 import {
-  advanceLightingLoop,
+  advanceLightingEngine,
+  createLightingEngine,
   createLightingLoopState,
   queueLightingUpdate,
+  resetLightingEngine,
 } from "../src/lib/lighting-loop.ts";
 
 nextEnv.loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
@@ -39,8 +42,9 @@ const originAllowed = (origin: string | undefined) =>
 const app = express();
 const wizSender = createWizSender();
 const lighting = createLightingLoopState();
+const engine = createLightingEngine(lighting);
 const sockets = new Set<WebSocket>();
-let loopInterval: ReturnType<typeof setInterval> | undefined;
+let running = false;
 
 app.use(
   cors({
@@ -79,65 +83,56 @@ const broadcast = () => {
   for (const socket of sockets) {
     if (socket.readyState === WebSocket.OPEN) socket.send(message);
   }
-  remote?.publishState();
 };
 
-const buildParams = (config: WizLight): WizLight => {
-  const params: WizLight = {};
-  if (config.state !== undefined) params.state = config.state;
-  if (config.dimming !== undefined) params.dimming = 100 - config.dimming * 100;
-  if (config.color) {
-    [params.r, params.g, params.b] = config.color;
-    if (config.color.reduce((sum, channel) => sum + channel, 0) === 255 * 3) {
-      if (params.dimming) params.dimming *= 0.75;
+const activeKey = () =>
+  JSON.stringify({
+    activeSequence: lighting.activeSequence,
+    runningSequence: lighting.runningSequence,
+    activeAccent: lighting.activeAccent,
+    runningAccent: lighting.runningAccent,
+    sequenceColorMode: lighting.sequenceColorMode,
+    sequenceColor: lighting.sequenceColor,
+    accentColorMode: lighting.accentColorMode,
+    accentColor: lighting.accentColor,
+    queue: lighting.queue,
+  });
+
+// Output loops pull from the engine on their own schedule; whichever samples
+// furthest ahead advances it, and state changes are broadcast as they happen.
+const lightSource = {
+  now: Date.now,
+  grid: () => lighting,
+  map: engine.map,
+  advance(time: number) {
+    const before = activeKey();
+    if (advanceLightingEngine(engine, time) && activeKey() !== before) {
+      broadcast();
     }
-  }
-  return params;
+  },
 };
-
-const loop = () => {
-  const before = JSON.stringify({
-    activeSequence: lighting.activeSequence,
-    runningSequence: lighting.runningSequence,
-    activeAccent: lighting.activeAccent,
-    runningAccent: lighting.runningAccent,
-    sequenceColorMode: lighting.sequenceColorMode,
-    sequenceColor: lighting.sequenceColor,
-    accentColorMode: lighting.accentColorMode,
-    accentColor: lighting.accentColor,
-    queue: lighting.queue,
-  });
-  const lightMap = advanceLightingLoop(lighting, Date.now(), 120);
-  if (!lightMap) return;
-  for (const [ip, config] of Object.entries(lightMap)) {
-    wizSender.update(Number(ip), buildParams(config));
-  }
-  const after = JSON.stringify({
-    activeSequence: lighting.activeSequence,
-    runningSequence: lighting.runningSequence,
-    activeAccent: lighting.activeAccent,
-    runningAccent: lighting.runningAccent,
-    sequenceColorMode: lighting.sequenceColorMode,
-    sequenceColor: lighting.sequenceColor,
-    accentColorMode: lighting.accentColorMode,
-    accentColor: lighting.accentColor,
-    queue: lighting.queue,
-  });
-  if (before !== after) broadcast();
-};
+const wizLights = LIGHTS.filter((light) => light.brand === "wiz");
+const goveeLights = LIGHTS.filter((light) => light.brand === "govee");
+// Only open the Govee socket (port 4002) when Govee lights are configured.
+const goveeSender = goveeLights.length ? createGoveeSender(goveeLights) : undefined;
+const outputs = [
+  createLightOutput(createWizDriver(wizSender, wizLights), lightSource),
+  ...(goveeSender
+    ? [createLightOutput(createGoveeDriver(goveeSender, goveeLights), lightSource)]
+    : []),
+];
 
 const startLoop = () => {
-  if (!loopInterval) {
-    lighting.currentBeat = -1;
-    lighting.currentTick = -1;
-    loop();
-    loopInterval = setInterval(loop, 1000 / 60);
-  }
+  if (running) return;
+  running = true;
+  resetLightingEngine(engine);
+  for (const output of outputs) output.start();
 };
 const stopLoop = () => {
-  if (loopInterval) clearInterval(loopInterval);
-  loopInterval = undefined;
+  running = false;
+  for (const output of outputs) output.stop();
   wizSender.clearPending();
+  goveeSender?.reset();
 };
 
 const applyCommand = (command: HubCommand) => {
@@ -190,7 +185,6 @@ const applyCommand = (command: HubCommand) => {
   broadcast();
 };
 
-const remote = createApinatorBridge(getSnapshot, applyCommand);
 
 app.get("/settings", (_req, res) => {
   res.json({
@@ -332,9 +326,9 @@ const heartbeat = setInterval(() => {
 
 const shutdown = () => {
   clearInterval(heartbeat);
-  remote?.close();
   stopLoop();
   wizSender.close();
+  goveeSender?.close();
   for (const socket of websocketServer.clients) socket.terminate();
   websocketServer.close();
   server.close();

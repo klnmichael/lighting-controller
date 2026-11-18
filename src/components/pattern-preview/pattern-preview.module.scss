@@ -1,0 +1,26 @@
+.container {
+  position: absolute;
+  inset: 0.6vw;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+// Matches the blueprint's width:depth so percentages land like the real map.
+.room {
+  position: relative;
+  height: 100%;
+  aspect-ratio: 523 / 671;
+}
+
+.dot {
+  --alpha: 0.1;
+  position: absolute;
+  width: 0.36vw;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, var(--alpha));
+}
