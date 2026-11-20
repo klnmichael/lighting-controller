@@ -116,8 +116,9 @@ export default function Home() {
 
   const onToggle = () => {
     if (hubConfigured && !hub.send({ type: "toggle" })) return;
-    // Stop everything that is playing, sequence and accent alike.
-    if (cueTimestamp && (sequence || accent)) {
+    // Stop the running loop (even a bare cue) and everything playing on it,
+    // sequence and accent alike.
+    if (cueTimestamp) {
       setSequence("");
       setAccent("");
       setCueTimestamp(0);

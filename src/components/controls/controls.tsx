@@ -236,8 +236,9 @@ const Controls = ({
   // The engine's live state applies whenever the loop is running, which a cue
   // can start without any sequence playing.
   const running = Boolean(cueTimestamp);
-  // Mirrors onToggle: it stops when something is playing, otherwise starts.
-  const playing = running && Boolean(sequence || accent);
+  // Mirrors onToggle: it stops whenever the loop is running (including a cue
+  // without a sequence), otherwise starts.
+  const playing = running;
   const applied = running
     ? activeLighting
     : {

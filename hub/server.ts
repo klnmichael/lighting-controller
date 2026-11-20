@@ -171,8 +171,9 @@ const applyCommand = (command: HubCommand) => {
   console.log(command);
   switch (command.type) {
     case "toggle":
-      // Stop everything that is playing, sequence and accent alike.
-      if (running && (lighting.activeSequence || lighting.activeAccent)) {
+      // Stop the running loop (even a bare cue) and everything playing on
+      // it, sequence and accent alike.
+      if (running) {
         stopPlayback({ accent: true });
       } else {
         startSequence(lastSequence);

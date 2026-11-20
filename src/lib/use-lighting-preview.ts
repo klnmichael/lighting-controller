@@ -78,6 +78,8 @@ class LightingPreview {
     this.engine.state.cueTimestamp = cueTimestamp;
     // A cue runs the beat loop even when no sequence is playing.
     if (cueTimestamp) this.start();
+    // Clearing the cue stops a loop that only the cue was running.
+    else if (!this.engine.state.activeSequence) this.stop();
   }
 
   setSequence(sequence: string | undefined) {
