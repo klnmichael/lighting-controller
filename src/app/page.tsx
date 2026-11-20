@@ -108,10 +108,23 @@ export default function Home() {
   const hub = useHub(hubUrl, onHubSnapshot);
   const hubConfigured = Boolean(hubUrl);
 
+  // Toggling playback back on resumes whatever sequence was last played.
+  const lastSequence = useRef("shuffle");
+  useEffect(() => {
+    if (sequence) lastSequence.current = sequence;
+  }, [sequence]);
+
   const onToggle = () => {
     if (hubConfigured && !hub.send({ type: "toggle" })) return;
-    setSequence("");
-    setCueTimestamp(0);
+    // Stop everything that is playing, sequence and accent alike.
+    if (cueTimestamp && (sequence || accent)) {
+      setSequence("");
+      setAccent("");
+      setCueTimestamp(0);
+    } else {
+      if (!cueTimestamp) setCueTimestamp(Date.now());
+      setSequence(lastSequence.current);
+    }
   };
 
   const onCue = (timestamp: number) => {
@@ -199,27 +212,8 @@ export default function Home() {
     setAccentDimming(accentDimming);
   };
 
-  const gamepadActions = useRef({
-    onToggle,
-    onCue,
-    onSequence,
-    onSequenceColorMode,
-    onSequenceColor,
-    onAccentColorMode,
-    onAccentColor,
-    onAccent,
-    onJoystickPreview: lightbar.onJoystickPreview,
-    onLightbarSuppressed: lightbar.onLightbarSuppressed,
-    onBpm,
-    onBpmTap,
-    onSequenceDimming,
-    onAccentDimming,
-    sequence,
-    bpm,
-    sequenceDimming,
-    accentDimming,
-  });
-  gamepadActions.current = {
+  // Read by the gamepad polling loop, which outlives any single render.
+  const latestGamepadActions = {
     onToggle,
     onCue,
     onSequence,
@@ -239,6 +233,10 @@ export default function Home() {
     sequenceDimming,
     accentDimming,
   };
+  const gamepadActions = useRef(latestGamepadActions);
+  useEffect(() => {
+    gamepadActions.current = latestGamepadActions;
+  });
 
   useEffect(() => {
     let frameId = 0;
@@ -387,8 +385,6 @@ export default function Home() {
         if (justPressed(12)) actions.onBpm(actions.bpm + 1);
         if (justPressed(13)) actions.onBpm(Math.max(1, actions.bpm - 1));
         if (justPressed(14)) actions.onBpmTap();
-        if (justPressed(15)) {
-        }
 
         previousButtons.current = pressed;
       }
@@ -405,7 +401,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Read after mount: localStorage isn't available during server rendering.
     const storedHubUrl = window.localStorage.getItem(HUB_URL_STORAGE_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (storedHubUrl) setHubUrl(storedHubUrl);
   }, []);
 

@@ -1,4 +1,5 @@
 import type { LightId, LightSample, VirtualLightMap } from "./light-map.ts";
+import { TICKS_PER_BEAT } from "./timeline.ts";
 
 /**
  * How often a driver samples the map:
@@ -12,15 +13,11 @@ export type OutputRate =
   | { perBeat: number }
   | { maxFps: number };
 
-const TICKS_PER_BEAT = 4;
-
-const framesPerBeat = (rate: OutputRate, bpm: number) => {
+/** Frames per beat for beat-aligned rates. */
+const framesPerBeat = (rate: { perBeat: number } | { maxFps: number }, bpm: number) => {
   if ("perBeat" in rate) return rate.perBeat;
-  if ("maxFps" in rate) {
-    const perTick = Math.floor((rate.maxFps * 60) / bpm / TICKS_PER_BEAT);
-    return TICKS_PER_BEAT * Math.max(1, perTick);
-  }
-  return undefined;
+  const perTick = Math.floor((rate.maxFps * 60) / bpm / TICKS_PER_BEAT);
+  return TICKS_PER_BEAT * Math.max(1, perTick);
 };
 
 export interface LightDriver<TPayload> {
@@ -81,11 +78,10 @@ export function createLightOutput<TPayload>(
     timer = undefined;
     if (!running) return;
     const visibleAt = source.now() + driver.latency;
+    const { rate } = driver;
 
-    const { cueTimestamp, bpm } = source.grid();
-    const perBeat = framesPerBeat(driver.rate, bpm);
-    if (perBeat === undefined) {
-      const interval = 1000 / (driver.rate as { fps: number }).fps;
+    if ("fps" in rate) {
+      const interval = 1000 / rate.fps;
       frame(visibleAt);
       nextFrameTime =
         nextFrameTime === undefined || nextFrameTime + interval < visibleAt
@@ -95,7 +91,8 @@ export function createLightOutput<TPayload>(
       return;
     }
 
-    const interval = 60000 / bpm / perBeat;
+    const { cueTimestamp, bpm } = source.grid();
+    const interval = 60000 / bpm / framesPerBeat(rate, bpm);
     const step = Math.floor(
       (visibleAt + EARLY_TOLERANCE - cueTimestamp) / interval,
     );

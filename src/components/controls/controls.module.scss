@@ -104,9 +104,6 @@
   white-space: nowrap;
   border: 0;
 }
-.listen {
-  opacity: 0.25;
-}
 .gamepad {
   position: relative;
   color: white;
@@ -341,6 +338,13 @@
   z-index: 1;
   width: 35%;
   height: 35%;
+  display: block;
+  margin: auto;
+}
+
+.toggleIcon {
+  width: 1em;
+  height: 1em;
   display: block;
   margin: auto;
 }

@@ -9,9 +9,11 @@ import { createUdpSender } from "./udp-sender.ts";
 const WIZ_PORT = 38899;
 
 export const createWizSender = (socket = dgram.createSocket("udp4")) => {
-  // socket.on("error", (error) => {
-  //   console.error("WiZ UDP socket error:", error);
-  // });
+  // Without a listener, a socket error would crash the hub. Per-packet send
+  // failures (e.g. an unplugged bulb) go to the send callback, not here.
+  socket.on("error", (error) => {
+    console.error("WiZ UDP socket error:", error);
+  });
   socket.bind();
   const udp = createUdpSender(socket);
   return {

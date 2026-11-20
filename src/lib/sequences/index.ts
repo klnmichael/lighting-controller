@@ -1,12 +1,4 @@
-import {
-  COUCH,
-  DANCE,
-  IPS,
-  KITCHEN,
-  OUTLINE,
-  RADIAL,
-  ROWS_X,
-} from "../constants.ts";
+import { IPS, OUTLINE, RADIAL, ROWS_X, lightIds } from "../constants.ts";
 import {
   createCachedTimeline,
   seededIps,
@@ -44,7 +36,7 @@ const circleTimeline = (
     return [
       { dimming: 1 },
       ...OUTLINE.map((index, position) => ({
-        ips: [IPS[index]],
+        ips: lightIds([index]),
         dimming: Math.min(
           ...heads.map((head) =>
             trailDimming(head, direction * position, tailLength),
@@ -210,7 +202,7 @@ export const sequences: Record<string, LightingPattern> = {
         return [
           { dimming: 1 },
           ...ROWS_X.map((row, position) => ({
-            ips: row.map((index) => IPS[index]),
+            ips: lightIds(row),
             dimming: Math.min(1, Math.abs(position - head)),
           })),
         ];
@@ -223,7 +215,7 @@ export const sequences: Record<string, LightingPattern> = {
       Array.from({ length: 16 }, (_, tick) => [
         { dimming: 1 },
         ...RADIAL.map((ring, position) => ({
-          ips: [...new Set(ring)].map((index) => IPS[index]),
+          ips: lightIds(ring),
           dimming:
             (1 -
               Math.cos((tick / 16 - position / RADIAL.length) * 2 * Math.PI)) /
@@ -233,7 +225,7 @@ export const sequences: Record<string, LightingPattern> = {
     ),
   },
   // zoneCrossfade: {
-  //   title: "Zone Crossfade",
+  //   title: "Zone Crossfade", (needs COUCH, KITCHEN and DANCE imported)
   //   timeline: createCachedTimeline(() => {
   //     const zones = [COUCH, KITCHEN, DANCE];
   //     return Array.from({ length: 16 }, (_, tick) => {
@@ -242,9 +234,9 @@ export const sequences: Record<string, LightingPattern> = {
   //       const blend = head - current;
   //       return [
   //         { dimming: 1 },
-  //         { ips: zones[current].map((index) => IPS[index]), dimming: blend },
+  //         { ips: lightIds(zones[current]), dimming: blend },
   //         {
-  //           ips: zones[(current + 1) % zones.length].map((index) => IPS[index]),
+  //           ips: lightIds(zones[(current + 1) % zones.length]),
   //           dimming: 1 - blend,
   //         },
   //       ];
@@ -259,7 +251,7 @@ export const sequences: Record<string, LightingPattern> = {
   //       return [
   //         { dimming: 1 },
   //         ...OUTLINE.map((index, position) => ({
-  //           ips: [IPS[index]],
+  //           ips: lightIds([index]),
   //           dimming: Math.min(
   //             trailDimming(head, position, 4),
   //             trailDimming(head, -position, 4),

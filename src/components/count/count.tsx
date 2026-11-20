@@ -6,16 +6,13 @@ import styles from "./count.module.scss";
 export interface MapProps {
   cueTimestamp: number;
   bpm: number;
-  sequence?: string;
 }
 
-const Count = ({ cueTimestamp, bpm, sequence }: MapProps) => {
+const Count = ({ cueTimestamp, bpm }: MapProps) => {
   const outputRef = useRef<HTMLDivElement>(null);
 
   const cueTimestampRef = useRef(cueTimestamp);
   const bpmRef = useRef(bpm);
-
-  const activeSequence = useRef("");
 
   const currentBeat = useRef(-1);
   const currentTick = useRef(-1);
@@ -58,21 +55,15 @@ const Count = ({ cueTimestamp, bpm, sequence }: MapProps) => {
 
   useEffect(() => {
     cueTimestampRef.current = cueTimestamp;
+    // The counter runs whenever the loop has been cued, with or without a
+    // sequence playing.
+    if (cueTimestamp) startLoop();
+    else stopLoop();
   }, [cueTimestamp]);
 
   useEffect(() => {
     bpmRef.current = bpm;
   }, [bpm]);
-
-  useEffect(() => {
-    if (sequence) {
-      if (!activeSequence.current) {
-        startLoop();
-      }
-    } else {
-      stopLoop();
-    }
-  }, [sequence]);
 
   return (
     <section className={styles.container}>

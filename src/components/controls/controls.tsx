@@ -36,11 +36,13 @@ const getColorWheelGradient = (colors: Color[]) => {
 };
 
 // Hard stops: each color gets an equal-width band.
-const COLOR_GRADIENT = `linear-gradient(90deg,${ACTIVE_COLORS.map((color, index) => {
-  const start = (index / ACTIVE_COLORS.length) * 100;
-  const end = ((index + 1) / ACTIVE_COLORS.length) * 100;
-  return `rgb(${color.join(",")}) ${start}% ${end}%`;
-}).join(",")})`;
+const COLOR_GRADIENT = `linear-gradient(90deg,${ACTIVE_COLORS.map(
+  (color, index) => {
+    const start = (index / ACTIVE_COLORS.length) * 100;
+    const end = ((index + 1) / ACTIVE_COLORS.length) * 100;
+    return `rgb(${color.join(",")}) ${start}% ${end}%`;
+  },
+).join(",")})`;
 
 const ShuffleIcon = () => (
   <svg
@@ -59,6 +61,44 @@ const ShuffleIcon = () => (
     <path d="M12.5 14c1 2.2 2.5 4 4.5 4h4" />
     <path d="M18 3l3 3-3 3" />
     <path d="M18 15l3 3-3 3" />
+  </svg>
+);
+
+const PlayIcon = () => (
+  <svg
+    className={styles.toggleIcon}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" />
+  </svg>
+);
+
+const StopIcon = () => (
+  <svg
+    className={styles.toggleIcon}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <rect x="5" y="5" width="14" height="14" rx="1.5" />
+  </svg>
+);
+
+const SettingsIcon = () => (
+  <svg
+    className={styles.toggleIcon}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
@@ -193,7 +233,12 @@ const Controls = ({
 }: ControlsProps) => {
   const hubStatusId = useId();
   const controllerDialogRef = useRef<HTMLDialogElement>(null);
-  const applied = sequence
+  // The engine's live state applies whenever the loop is running, which a cue
+  // can start without any sequence playing.
+  const running = Boolean(cueTimestamp);
+  // Mirrors onToggle: it stops when something is playing, otherwise starts.
+  const playing = running && Boolean(sequence || accent);
+  const applied = running
     ? activeLighting
     : {
         activeSequence: "",
@@ -212,7 +257,7 @@ const Controls = ({
     buttonState(sequence === name, applied.activeSequence === name);
   const accentButtonState = (name: string) => {
     const active = applied.activeAccent === name;
-    const queued = Boolean(sequence) && active && accent === "";
+    const queued = running && active && accent === "";
     return {
       ...buttonState(accent === name, active),
       ...(queued ? { "data-queued": true, "aria-busy": true } : {}),
@@ -223,7 +268,7 @@ const Controls = ({
     mode: string | undefined,
     color: Color | undefined,
   ) =>
-    sequence && applied.activeSequence && mode === COLOR_MODES[0] && color
+    running && mode === COLOR_MODES[0] && color
       ? `rgb(${color.join(",")})`
       : COLOR_GRADIENT;
   const colorMatches = (
@@ -266,8 +311,30 @@ const Controls = ({
     <section className={styles.container}>
       <div className={styles.header}>
         <div className={styles.group}>
-          <Button onPress={onToggle}>I/O</Button>
+          <Button
+            title={playing ? "Stop" : "Play"}
+            aria-label={playing ? "Stop" : "Play"}
+            onPress={onToggle}
+          >
+            {playing ? <StopIcon /> : <PlayIcon />}
+          </Button>
           <Button onPress={() => onCue(Date.now())}>CUE</Button>
+          <Count cueTimestamp={cueTimestamp} bpm={bpm} />
+          <Button className={styles.decrease} onPress={() => onBpm(bpm - 1)}>
+            -
+          </Button>
+          <input
+            type="number"
+            value={bpm}
+            min={1}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => onBpm(parseFloat(e.target.value) || 1)}
+          />
+          <Button className={styles.increase} onPress={() => onBpm(bpm + 1)}>
+            +
+          </Button>
+          <Button onPress={onBpmTap}>TAP</Button>
+          <Button onPress={onBpmListen}>LISTEN</Button>
         </div>
         <div className={styles.temp}>
           <label className={styles.hubUrl}>
@@ -450,26 +517,15 @@ const Controls = ({
           </details>
         </div>
         <div className={styles.group}>
-          <Count cueTimestamp={cueTimestamp} bpm={bpm} sequence={sequence} />
-          <Button className={styles.decrease} onPress={() => onBpm(bpm - 1)}>
-            -
-          </Button>
-          <input
-            type="number"
-            value={bpm}
-            min={1}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => onBpm(parseFloat(e.target.value) || 1)}
-          />
-          <Button className={styles.increase} onPress={() => onBpm(bpm + 1)}>
-            +
-          </Button>
-          <Button onPress={onBpmTap}>TAP</Button>
-          <Button className={styles.listen} onPress={onBpmListen}>
-            LISTEN
-          </Button>
           <Button onPress={on3D}>3D</Button>
-          <Button onPress={onSettings}>SET</Button>
+          <Button
+            title="Settings"
+            aria-label="Settings"
+            onPress={onSettings}
+            disabled
+          >
+            <SettingsIcon />
+          </Button>
         </div>
       </div>
       <div className={styles.pad}>

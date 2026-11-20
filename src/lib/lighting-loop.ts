@@ -3,7 +3,12 @@ import { ACCENT_COLORS, ACTIVE_COLORS, COLOR_MODES, IPS } from "./constants.ts";
 import { accentOrder, accents } from "./accents.ts";
 import { sequenceOrder, sequences } from "./sequences/index.ts";
 import { VirtualLightMap, type LightId } from "./light-map.ts";
-import { DEFAULT_TRANSITION, mulberry32 } from "./timeline.ts";
+import {
+  DEFAULT_TRANSITION,
+  TICKS_PER_BEAT,
+  mulberry32,
+  type TimelineData,
+} from "./timeline.ts";
 
 interface LightKeyframe {
   color?: Color;
@@ -87,30 +92,55 @@ export function createLightingLoopState(): LightingLoopState {
   };
 }
 
+/**
+ * Queue changes to take effect on the next bar. Empty values are ignored,
+ * except for `accent`, where "" means "turn the accent off".
+ */
 export function queueLightingUpdate(
   state: LightingLoopState,
   update: QueuedLighting,
 ) {
-  if (update.sequence) state.queue.sequence = update.sequence;
+  const { queue } = state;
+  if (update.sequence) queue.sequence = update.sequence;
   if (update.sequenceColorMode)
-    state.queue.sequenceColorMode = update.sequenceColorMode;
-  if (update.sequenceColor) state.queue.sequenceColor = update.sequenceColor;
-  if (update.accent || update.accent === "") state.queue.accent = update.accent;
-  if (update.accentColorMode)
-    state.queue.accentColorMode = update.accentColorMode;
-  if (update.accentColor) state.queue.accentColor = update.accentColor;
+    queue.sequenceColorMode = update.sequenceColorMode;
+  if (update.sequenceColor) queue.sequenceColor = update.sequenceColor;
+  if (update.accent !== undefined) queue.accent = update.accent;
+  if (update.accentColorMode) queue.accentColorMode = update.accentColorMode;
+  if (update.accentColor) queue.accentColor = update.accentColor;
 }
 
-const TICKS_PER_BEAT = 4;
+/** Apply everything queued with `queueLightingUpdate`; runs on each bar. */
+function applyQueue(state: LightingLoopState) {
+  const { queue } = state;
+  if (queue.sequence) {
+    state.activeSequence = queue.sequence;
+    state.runningSequence = queue.sequence;
+  }
+  if (queue.sequenceColorMode) state.sequenceColorMode = queue.sequenceColorMode;
+  if (queue.sequenceColor) state.sequenceColor = queue.sequenceColor;
+  if (queue.accent !== undefined) {
+    state.activeAccent = queue.accent;
+    state.runningAccent = queue.accent;
+  }
+  if (queue.accentColorMode) state.accentColorMode = queue.accentColorMode;
+  if (queue.accentColor) state.accentColor = queue.accentColor;
+  state.queue = {};
+}
+
 // Beyond this many missed ticks (e.g. a backgrounded tab), jump to the present.
 const MAX_CATCH_UP_TICKS = 64;
 // Map history kept behind the newest processed time, for lagging samplers.
 const HISTORY_MS = 2000;
+const BEATS_PER_BAR = 4;
+const BEATS_PER_PHRASE = 16;
 
 export interface LightingEngine {
   state: LightingLoopState;
   map: VirtualLightMap;
-  grid?: string;
+  /** Cue and BPM the processed ticks were laid out on. */
+  gridCue?: number;
+  gridBpm?: number;
   lastTickIndex?: number;
 }
 
@@ -137,64 +167,74 @@ export function advanceLightingEngine(
   time: number,
 ): boolean {
   const { state } = engine;
-  const tickLength = 60000 / state.bpm / TICKS_PER_BEAT;
-  const grid = `${state.cueTimestamp}:${state.bpm}`;
-  if (grid !== engine.grid) {
-    engine.grid = grid;
+  const { cueTimestamp, bpm } = state;
+  if (cueTimestamp !== engine.gridCue || bpm !== engine.gridBpm) {
+    engine.gridCue = cueTimestamp;
+    engine.gridBpm = bpm;
     engine.lastTickIndex = undefined;
   }
 
-  const latest = Math.floor((time - state.cueTimestamp) / tickLength);
+  const tickLength = 60000 / bpm / TICKS_PER_BEAT;
+  const latest = Math.floor((time - cueTimestamp) / tickLength);
   let next =
     engine.lastTickIndex === undefined ? latest : engine.lastTickIndex + 1;
   if (latest - next >= MAX_CATCH_UP_TICKS) next = latest;
   if (next > latest) return false;
 
   for (let index = next; index <= latest; index++) {
-    processTick(engine, index, state.cueTimestamp + index * tickLength);
+    processTick(engine, index, cueTimestamp + index * tickLength);
   }
   engine.lastTickIndex = latest;
   engine.map.prune(time - HISTORY_MS);
   return true;
 }
 
+/** Positive modulo, so ticks before the cue still land on the grid. */
+const mod = (value: number, divisor: number) =>
+  ((value % divisor) + divisor) % divisor;
+
+/** A timeline's step for this beat and tick; timelines loop on whole beats. */
+function stepAt<T>(timeline: readonly T[], beat: number, tick: number) {
+  const beats = timeline.length / TICKS_PER_BEAT;
+  return beats ? timeline[mod(beat, beats) * TICKS_PER_BEAT + tick] : undefined;
+}
+
+/** Pick a shuffled pattern, never repeating the one that is running. */
+const shuffle = (order: readonly string[], running: string, seed: number) =>
+  getSeededItem(
+    order.filter((name) => name !== running),
+    seed,
+  );
+
 function processTick(engine: LightingEngine, index: number, time: number) {
   const { state, map } = engine;
   const elapsedBeats = index / TICKS_PER_BEAT;
+  const absoluteBeat = Math.floor(elapsedBeats);
+  const beat = mod(absoluteBeat, BEATS_PER_PHRASE);
+  const tick = mod(index, TICKS_PER_BEAT);
   const seed = Math.round(elapsedBeats + state.seedShift);
-  state.currentBeat = ((Math.floor(elapsedBeats) % 16) + 16) % 16;
-  state.currentTick =
-    ((index % TICKS_PER_BEAT) + TICKS_PER_BEAT) % TICKS_PER_BEAT;
+  state.currentBeat = beat;
+  state.currentTick = tick;
 
-  if (!(state.currentBeat % 4) && state.currentTick === 0) {
-    if (state.queue.sequence) {
-      state.activeSequence = state.queue.sequence;
-      state.runningSequence = state.queue.sequence;
-    }
-    if (state.queue.sequenceColorMode)
-      state.sequenceColorMode = state.queue.sequenceColorMode;
-    if (state.queue.sequenceColor)
-      state.sequenceColor = state.queue.sequenceColor;
-    if (state.queue.accent || state.queue.accent === "") {
-      state.activeAccent = state.queue.accent;
-      state.runningAccent = state.queue.accent;
-    }
-    if (state.queue.accentColorMode)
-      state.accentColorMode = state.queue.accentColorMode;
-    if (state.queue.accentColor) state.accentColor = state.queue.accentColor;
-    state.queue = {};
-
-    if (state.activeSequence === "shuffle") {
-      const availableSequences = sequenceOrder.filter(
-        (sequence) => sequence !== state.runningSequence,
-      );
-      state.runningSequence = getSeededItem(availableSequences, seed);
-    }
-    if (state.activeAccent === "shuffle")
-      state.runningAccent = getSeededItem(accentOrder, seed);
+  const onBar = beat % BEATS_PER_BAR === 0 && tick === 0;
+  if (onBar) applyQueue(state);
+  // Shuffle picks on every bar, and immediately if it started mid-bar (when
+  // nothing has been picked yet).
+  if (
+    state.activeSequence === "shuffle" &&
+    (onBar || !Object.hasOwn(sequences, state.runningSequence))
+  ) {
+    state.runningSequence = shuffle(sequenceOrder, state.runningSequence, seed);
+  }
+  if (
+    state.activeAccent === "shuffle" &&
+    (onBar || !Object.hasOwn(accents, state.runningAccent))
+  ) {
+    // Unlike sequences, the accent shuffle may pick the current accent again.
+    state.runningAccent = getSeededItem(accentOrder, seed);
   }
 
-  if (!(state.currentBeat % 2) && state.currentTick === 0) {
+  if (beat % 2 === 0 && tick === 0) {
     if (state.sequenceColorMode === COLOR_MODES[0])
       state.sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
     if (state.accentColorMode === COLOR_MODES[0]) {
@@ -206,77 +246,63 @@ function processTick(engine: LightingEngine, index: number, time: number) {
   }
 
   const position = {
-    beat: state.currentBeat,
-    tick: state.currentTick,
-    absoluteBeat: Math.floor(elapsedBeats),
+    beat,
+    tick,
+    absoluteBeat,
     seedShift: state.seedShift,
   };
-  const keyframes: Record<LightId, LightKeyframe> = {};
+  const keyframes = new Map<LightId, LightKeyframe>();
 
   const sequence = sequences[state.runningSequence];
-  const sequenceTimeline = sequence?.timeline(position) || [];
-  const sequenceTimelineBeats = sequenceTimeline.length / 4;
-  const sequenceTimelineBeat =
-    ((state.currentBeat % sequenceTimelineBeats) + sequenceTimelineBeats) %
-    sequenceTimelineBeats;
-  const sequenceTimelineData =
-    sequenceTimeline[sequenceTimelineBeat * 4 + state.currentTick];
-  if (sequenceTimelineData) {
-    if (
-      state.sequenceColorMode === COLOR_MODES[1] &&
-      !(state.currentTick % 2)
-    ) {
+  const sequenceStep = sequence && stepAt(sequence.timeline(position), beat, tick);
+  if (sequenceStep) {
+    if (state.sequenceColorMode === COLOR_MODES[1] && tick % 2 === 0) {
       state.sequenceColor = getSeededItem(ACTIVE_COLORS, seed);
     }
-    sequenceTimelineData.forEach((data) => {
-      [...(data.ips || IPS)].forEach((ip: number) => {
-        const dimming = data.randomDimming
-          ? Math.random() * (data.randomDimming[1] - data.randomDimming[0]) +
-            data.randomDimming[0]
-          : data.dimming;
-        keyframes[ip] = {
+    // Seeded from the tick, so every engine sharing the cue twinkles alike.
+    let rng: (() => number) | undefined;
+    const dimmingOf = (data: TimelineData) => {
+      if (!data.randomDimming) return data.dimming;
+      rng ??= mulberry32(Math.imul(index, 0x9e3779b1) ^ state.seedShift);
+      const [min, max] = data.randomDimming;
+      return min + rng() * (max - min);
+    };
+    for (const data of sequenceStep) {
+      const transition =
+        data.transition ?? sequence.transition ?? DEFAULT_TRANSITION;
+      for (const ip of data.ips ?? IPS) {
+        const dimming = dimmingOf(data);
+        keyframes.set(ip, {
           dimming:
             dimming === undefined
               ? undefined
               : 1 - (1 - dimming) * state.sequenceDimming,
           color: state.sequenceColor,
-          transition:
-            data.transition ?? sequence.transition ?? DEFAULT_TRANSITION,
-        };
-      });
-    });
+          transition,
+        });
+      }
+    }
   }
 
   const accent = accents[state.runningAccent];
-  const accentTimeline = accent?.timeline(position) || [];
-  const accentTimelineBeats = accentTimeline.length / 4;
-  const accentTimelineData =
-    accentTimeline[
-      (state.currentBeat % accentTimelineBeats) * 4 + state.currentTick
-    ];
-  if (accentTimelineData) {
-    accentTimelineData.forEach((data) => {
-      data.ips?.forEach((ip: number) => {
-        keyframes[ip] = {
-          dimming: Math.min(1, data.dimming + (1 - state.accentDimming)),
-          color: state.accentColor,
-          transition:
-            data.transition ?? accent.transition ?? DEFAULT_TRANSITION,
-        };
-      });
-    });
+  const accentStep = accent && stepAt(accent.timeline(position), beat, tick);
+  if (accentStep) {
+    for (const data of accentStep) {
+      const keyframe = {
+        dimming: Math.min(1, data.dimming + (1 - state.accentDimming)),
+        color: state.accentColor,
+        transition: data.transition ?? accent.transition ?? DEFAULT_TRANSITION,
+      };
+      for (const ip of data.ips) keyframes.set(ip, keyframe);
+    }
   }
 
-  for (const [ip, keyframe] of Object.entries(keyframes)) {
+  for (const [ip, { color, dimming, transition }] of keyframes) {
     map.set(
-      Number(ip),
-      {
-        color: keyframe.color,
-        brightness:
-          keyframe.dimming === undefined ? undefined : 1 - keyframe.dimming,
-      },
+      ip,
+      { color, brightness: dimming === undefined ? undefined : 1 - dimming },
       time,
-      keyframe.transition * 1000,
+      transition * 1000,
     );
   }
 }

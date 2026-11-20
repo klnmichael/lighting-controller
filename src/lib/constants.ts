@@ -44,33 +44,37 @@ export const LIGHT_BRANDS: Record<LightBrand, LightBrandProfile> = {
  *     ip: "192.168.50.60", model: "H6008", position: [40, 40] },
  */
 export const LIGHTS: readonly LightFixture[] = [
-  { id: 130, brand: "wiz", ip: "192.168.50.130", position: [11.4, 8.9] },
-  { id: 214, brand: "wiz", ip: "192.168.50.214", position: [31.6, 8.9] },
-  { id: 185, brand: "wiz", ip: "192.168.50.185", position: [50.1, 8.9] },
-  { id: 168, brand: "wiz", ip: "192.168.50.168", position: [67, 8.9] },
-  { id: 199, brand: "wiz", ip: "192.168.50.199", position: [85.6, 8.9] },
-  { id: 180, brand: "wiz", ip: "192.168.50.180", position: [62, 16.2] },
-  { id: 238, brand: "wiz", ip: "192.168.50.238", position: [74, 16.2] },
-  { id: 197, brand: "wiz", ip: "192.168.50.197", position: [85.6, 16.2] },
-  { id: 252, brand: "wiz", ip: "192.168.50.252", position: [11.4, 28.8] },
-  { id: 194, brand: "wiz", ip: "192.168.50.194", position: [31.6, 28.8] },
-  { id: 232, brand: "wiz", ip: "192.168.50.232", position: [50.1, 28.8] },
-  { id: 92, brand: "wiz", ip: "192.168.50.92", position: [67, 28.8] },
-  { id: 102, brand: "wiz", ip: "192.168.50.102", position: [85.6, 28.8] },
-  { id: 237, brand: "wiz", ip: "192.168.50.237", position: [19.2, 49.4] },
-  { id: 195, brand: "wiz", ip: "192.168.50.195", position: [39.4, 49.4] },
-  { id: 196, brand: "wiz", ip: "192.168.50.196", position: [57.9, 49.4] },
-  { id: 101, brand: "wiz", ip: "192.168.50.101", position: [19.2, 63.8] },
-  { id: 240, brand: "wiz", ip: "192.168.50.240", position: [57.9, 63.8] },
-  { id: 79, brand: "wiz", ip: "192.168.50.79", position: [19.2, 78] },
-  { id: 161, brand: "wiz", ip: "192.168.50.161", position: [57.9, 78] },
-  { id: 84, brand: "wiz", ip: "192.168.50.84", position: [19.2, 92.5] },
-  { id: 164, brand: "wiz", ip: "192.168.50.164", position: [39.4, 92.5] },
-  { id: 142, brand: "wiz", ip: "192.168.50.142", position: [57.9, 92.5] },
+  { id: 130, brand: "wiz", ip: "192.168.1.130", position: [11.4, 8.9] },
+  { id: 214, brand: "wiz", ip: "192.168.1.214", position: [31.6, 8.9] },
+  { id: 185, brand: "wiz", ip: "192.168.1.185", position: [50.1, 8.9] },
+  { id: 168, brand: "wiz", ip: "192.168.1.168", position: [67, 8.9] },
+  { id: 199, brand: "wiz", ip: "192.168.1.199", position: [85.6, 8.9] },
+  { id: 180, brand: "wiz", ip: "192.168.1.180", position: [62, 16.2] },
+  { id: 238, brand: "wiz", ip: "192.168.1.238", position: [74, 16.2] },
+  { id: 197, brand: "wiz", ip: "192.168.1.197", position: [85.6, 16.2] },
+  { id: 252, brand: "wiz", ip: "192.168.1.252", position: [11.4, 28.8] },
+  { id: 194, brand: "wiz", ip: "192.168.1.194", position: [31.6, 28.8] },
+  { id: 232, brand: "wiz", ip: "192.168.1.232", position: [50.1, 28.8] },
+  { id: 92, brand: "wiz", ip: "192.168.1.92", position: [67, 28.8] },
+  { id: 102, brand: "wiz", ip: "192.168.1.102", position: [85.6, 28.8] },
+  { id: 237, brand: "wiz", ip: "192.168.1.237", position: [19.2, 49.4] },
+  { id: 195, brand: "wiz", ip: "192.168.1.195", position: [39.4, 49.4] },
+  { id: 196, brand: "wiz", ip: "192.168.1.196", position: [57.9, 49.4] },
+  { id: 101, brand: "wiz", ip: "192.168.1.101", position: [19.2, 63.8] },
+  { id: 240, brand: "wiz", ip: "192.168.1.240", position: [57.9, 63.8] },
+  { id: 79, brand: "wiz", ip: "192.168.1.79", position: [19.2, 78] },
+  { id: 161, brand: "wiz", ip: "192.168.1.161", position: [57.9, 78] },
+  { id: 84, brand: "wiz", ip: "192.168.1.84", position: [19.2, 92.5] },
+  { id: 164, brand: "wiz", ip: "192.168.1.164", position: [39.4, 92.5] },
+  { id: 142, brand: "wiz", ip: "192.168.1.142", position: [57.9, 92.5] },
 ];
 
 /** Light IDs in map order (timelines address lights by these). */
 export const IPS: number[] = LIGHTS.map((light) => light.id);
+
+/** Map indices into LIGHTS (as used by the groups below) to light IDs. */
+export const lightIds = (indices: readonly number[]): number[] =>
+  indices.map((index) => IPS[index]);
 
 export const ROWS_Y: number[][] = [
   [0, 1, 2, 3, 4],
@@ -91,9 +95,9 @@ export const ROWS_X: number[][] = [
 
 export const RADIAL: number[][] = [
   [14],
-  [9, 9, 10, 15, 17, 16, 13],
+  [9, 10, 15, 17, 16, 13],
   [1, 2, 5, 11, 19, 18, 8],
-  [0, 3, 4, 6, 7, 12, 22, 21, 20, 0],
+  [0, 3, 4, 6, 7, 12, 22, 21, 20],
 ];
 
 export const OUTLINE: number[] = [

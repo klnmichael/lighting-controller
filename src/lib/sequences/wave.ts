@@ -1,246 +1,78 @@
-import { IPS, RADIAL, ROWS_X, ROWS_Y } from "../constants.ts";
+import { RADIAL, ROWS_X, ROWS_Y, lightIds } from "../constants.ts";
 import {
   createCachedTimeline,
+  type LightingPattern,
   type LightingTimeline,
+  type TimelineData,
   type TimelinePosition,
 } from "../timeline.ts";
 
-const waveYTimeline = (rows: number[][]): LightingTimeline => {
-  return [
-    [
-      {
-        ips: rows[0].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: [
-          ...rows[1].map((index) => IPS[index]),
-          ...rows[2].map((index) => IPS[index]),
-          ...rows[3].map((index) => IPS[index]),
-          ...rows[4].map((index) => IPS[index]),
-          ...rows[5].map((index) => IPS[index]),
-          ...rows[6].map((index) => IPS[index]),
-        ],
-        dimming: 1,
-      },
-    ],
-    [
-      {
-        ips: rows[1].map((index) => IPS[index]),
-        dimming: 0,
-      },
-    ],
-    [
-      {
-        ips: rows[2].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[0].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-    ],
-    [
-      {
-        ips: rows[3].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[1].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-      {
-        ips: rows[0].map((index) => IPS[index]),
-        dimming: 1,
-      },
-    ],
-    [
-      {
-        ips: rows[4].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[2].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-      {
-        ips: rows[1].map((index) => IPS[index]),
-        dimming: 1,
-      },
-    ],
-    [
-      {
-        ips: rows[5].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[3].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-      {
-        ips: rows[2].map((index) => IPS[index]),
-        dimming: 1,
-      },
-    ],
-    [
-      {
-        ips: rows[6].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[4].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-      {
-        ips: rows[3].map((index) => IPS[index]),
-        dimming: 1,
-      },
-    ],
-    [
-      {
-        ips: rows[5].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-      {
-        ips: rows[4].map((index) => IPS[index]),
-        dimming: 1,
-      },
-    ],
-  ];
-};
+interface WaveShape {
+  /** Timeline length in ticks. */
+  length: number;
+  /** Ticks between one row lighting up and the next. */
+  stepTicks: number;
+  /** Rows behind the head that dim to half; omit for no half step. */
+  halfLag?: number;
+  /** Rows behind the head that turn off. */
+  offLag: number;
+}
 
-const waveXTimeline = (rows: number[][]): LightingTimeline => {
-  return [
-    [
-      {
-        ips: rows[0].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: [
-          ...rows[1].map((index) => IPS[index]),
-          ...rows[2].map((index) => IPS[index]),
-          ...rows[3].map((index) => IPS[index]),
-        ],
-        dimming: 1,
-      },
-    ],
-    [],
-    [
-      {
-        ips: rows[1].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[0].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-    ],
-    [],
-    [
-      {
-        ips: rows[2].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[1].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-      {
-        ips: rows[0].map((index) => IPS[index]),
-        dimming: 1,
-      },
-    ],
-    [],
-    [
-      {
-        ips: rows[3].map((index) => IPS[index]),
-        dimming: 0,
-      },
-      {
-        ips: rows[2].map((index) => IPS[index]),
-        dimming: 0.5,
-      },
-      {
-        ips: rows[1].map((index) => IPS[index]),
-        dimming: 1,
-      },
-    ],
-    [],
-  ];
-};
-
-export const waveWindowDoor = {
-  title: "Wave Window Door",
-  timeline: createCachedTimeline(() => waveYTimeline([...ROWS_Y])),
-};
-
-export const waveDoorWindow = {
-  title: "Wave Door Window",
-  timeline: createCachedTimeline(() => waveYTimeline([...ROWS_Y].reverse())),
-};
-
-export const waveAlternating = {
-  title: "Wave Alternating",
-  timeline: ({ beat }: TimelinePosition) => {
-    // Derived from the beat (not toggled per call) so several engines, such
-    // as the button previews, can share this timeline.
-    const rows =
-      Math.floor(beat / 2) % 2 ? [...ROWS_Y] : [...ROWS_Y].reverse();
-    return waveYTimeline(rows);
-  },
-};
-
-export const waveWallKitchen = {
-  title: "Wave Kitchen Wall",
-  timeline: createCachedTimeline(() => {
-    const rows = [...ROWS_X];
-    return waveXTimeline(rows);
-  }),
-};
-
-export const waveKitchenWall = {
-  title: "Wave Kitchen Wall",
-  timeline: createCachedTimeline(() => {
-    const rows = [...ROWS_X].reverse();
-    return waveXTimeline(rows);
-  }),
-};
-
-const waveRadiateTimeline = (rings: number[][]): LightingTimeline => {
-  const ring = (position: number, dimming: number) => ({
-    ips: rings[position].map((index) => IPS[index]),
-    dimming,
+/**
+ * A wave that lights `rows` one after another. At step `s`, row `s` turns on,
+ * row `s - halfLag` dims to half and row `s - offLag` turns off. The first
+ * step also turns every other row off, so each loop starts clean.
+ */
+const waveTimeline = (
+  rows: readonly number[][],
+  { length, stepTicks, halfLag, offLag }: WaveShape,
+): LightingTimeline => {
+  const row = (index: number, dimming: number): TimelineData[] =>
+    rows[index] ? [{ ips: lightIds(rows[index]), dimming }] : [];
+  return Array.from({ length }, (_, tick) => {
+    if (tick % stepTicks) return [];
+    const step = tick / stepTicks;
+    return [
+      ...row(step, 0),
+      ...(step === 0 ? [{ ips: lightIds(rows.slice(1).flat()), dimming: 1 }] : []),
+      ...(halfLag === undefined ? [] : row(step - halfLag, 0.5)),
+      ...row(step - offLag, 1),
+    ];
   });
-
-  return [
-    [
-      ring(0, 0),
-      {
-        ips: rings
-          .slice(1)
-          .flatMap((radialRing) => radialRing.map((index) => IPS[index])),
-        dimming: 1,
-      },
-    ],
-    [ring(1, 0)],
-    [ring(2, 0)],
-    [ring(3, 0), ring(0, 1)],
-    [ring(1, 1)],
-    [ring(2, 1)],
-    [ring(3, 1)],
-    [],
-  ];
 };
 
-export const waveRadiateOut = {
-  title: "Wave Radiate Out",
-  timeline: createCachedTimeline(() => waveRadiateTimeline(RADIAL)),
+const Y_WAVE: WaveShape = { length: 8, stepTicks: 1, halfLag: 2, offLag: 3 };
+const X_WAVE: WaveShape = { length: 8, stepTicks: 2, halfLag: 1, offLag: 2 };
+const RADIATE: WaveShape = { length: 8, stepTicks: 1, offLag: 3 };
+
+const reversed = <T>(items: readonly T[]) => [...items].reverse();
+
+const wave = (
+  title: string,
+  rows: readonly number[][],
+  shape: WaveShape,
+): LightingPattern => ({
+  title,
+  timeline: createCachedTimeline(() => waveTimeline(rows, shape)),
+});
+
+export const waveWindowDoor = wave("Wave Window Door", ROWS_Y, Y_WAVE);
+export const waveDoorWindow = wave("Wave Door Window", reversed(ROWS_Y), Y_WAVE);
+
+const alternatingTimelines = [
+  waveTimeline(reversed(ROWS_Y), Y_WAVE),
+  waveTimeline(ROWS_Y, Y_WAVE),
+];
+export const waveAlternating: LightingPattern = {
+  title: "Wave Alternating",
+  // Derived from the beat (not toggled per call) so several engines, such as
+  // the button previews, can share this timeline.
+  timeline: ({ beat }: TimelinePosition) =>
+    alternatingTimelines[Math.floor(beat / 2) % 2],
 };
 
-export const waveRadiateIn = {
-  title: "Wave Radiate In",
-  timeline: createCachedTimeline(() =>
-    waveRadiateTimeline([...RADIAL].reverse()),
-  ),
-};
+export const waveWallKitchen = wave("Wave Wall Kitchen", ROWS_X, X_WAVE);
+export const waveKitchenWall = wave("Wave Kitchen Wall", reversed(ROWS_X), X_WAVE);
+
+export const waveRadiateOut = wave("Wave Radiate Out", RADIAL, RADIATE);
+export const waveRadiateIn = wave("Wave Radiate In", reversed(RADIAL), RADIATE);

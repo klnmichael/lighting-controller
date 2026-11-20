@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import type { Color } from "@/types/global";
 import { IPS } from "@/lib/constants";
 import {
@@ -10,6 +10,7 @@ import {
   queueLightingUpdate,
   resetLightingEngine,
   type ActiveLighting,
+  type LightingLoopState,
 } from "@/lib/lighting-loop";
 import { createLights, type LightState } from "@/lib/lights";
 import type { HubSnapshot } from "@/lib/hub-protocol";
@@ -32,6 +33,145 @@ export interface LightingPreviewOptions {
   onActiveLightingChange: (lighting: ActiveLighting) => void;
 }
 
+interface PreviewOutputs {
+  onLightsChange: (lights: LightState[]) => void;
+  onActiveLightingChange: (lighting: ActiveLighting) => void;
+  /** Hub clock offset; only applied while mirroring a hub snapshot. */
+  clockOffset: number;
+  synced: boolean;
+}
+
+/**
+ * The local lighting engine, run on every display frame. Kept outside React
+ * so the frame loop reads plain fields instead of refs.
+ */
+class LightingPreview {
+  private readonly engine = createLightingEngine();
+  private readonly lights = createLights();
+  private outputs: PreviewOutputs = {
+    onLightsChange: () => {},
+    onActiveLightingChange: () => {},
+    clockOffset: 0,
+    synced: false,
+  };
+  private request: number | undefined;
+
+  connect(outputs: PreviewOutputs) {
+    this.outputs = outputs;
+  }
+
+  /** Settings that apply from the next tick. */
+  update(
+    patch: Partial<
+      Pick<LightingLoopState, "seedShift" | "bpm" | "sequenceDimming" | "accentDimming">
+    >,
+  ) {
+    Object.assign(this.engine.state, patch);
+  }
+
+  /** Settings that apply from the next bar. */
+  queue(update: Parameters<typeof queueLightingUpdate>[1]) {
+    queueLightingUpdate(this.engine.state, update);
+  }
+
+  cue(cueTimestamp: number) {
+    this.engine.state.cueTimestamp = cueTimestamp;
+    // A cue runs the beat loop even when no sequence is playing.
+    if (cueTimestamp) this.start();
+  }
+
+  setSequence(sequence: string | undefined) {
+    const { state } = this.engine;
+    if (sequence) {
+      // Queue on the bar while the loop is already ticking, even when only a
+      // cue (no sequence) started it.
+      if (state.activeSequence || this.ticking) {
+        queueLightingUpdate(state, { sequence });
+      } else {
+        state.activeSequence = sequence;
+        state.runningSequence = sequence;
+      }
+      this.start();
+    } else {
+      if (!state.cueTimestamp) this.stop();
+      state.activeSequence = "";
+      state.runningSequence = "";
+      delete state.queue.sequence;
+    }
+    this.notifyActiveLighting();
+  }
+
+  /** Adopt the hub's state wholesale. */
+  mirror({ lighting }: HubSnapshot) {
+    const state = { ...lighting, queue: { ...lighting.queue } };
+    this.engine.state = state;
+    resetLightingEngine(this.engine);
+    if (state.activeSequence || state.cueTimestamp) this.start();
+    else this.stop();
+    this.notifyActiveLighting();
+  }
+
+  stop() {
+    if (this.request === undefined) return;
+    cancelAnimationFrame(this.request);
+    this.request = undefined;
+  }
+
+  /** Whether the loop is running and has processed at least one tick. */
+  private get ticking() {
+    return this.request !== undefined && this.engine.lastTickIndex !== undefined;
+  }
+
+  private start() {
+    if (this.request !== undefined) return;
+    resetLightingEngine(this.engine);
+    // Defer the first tick so a sequence set in the same render as a fresh
+    // cue starts immediately instead of being queued for the next bar.
+    this.request = requestAnimationFrame(this.frame);
+  }
+
+  private notifyActiveLighting() {
+    this.outputs.onActiveLightingChange(getActiveLighting(this.engine.state));
+  }
+
+  private frame = () => {
+    this.request = requestAnimationFrame(this.frame);
+    const { engine, lights, outputs } = this;
+    const time = Date.now() + (outputs.synced ? outputs.clockOffset : 0);
+    const { queue, sequenceColor, accentColor } = engine.state;
+    advanceLightingEngine(engine, time);
+    // The engine replaces these objects (never mutates them) when they change.
+    if (
+      queue !== engine.state.queue ||
+      sequenceColor !== engine.state.sequenceColor ||
+      accentColor !== engine.state.accentColor
+    ) {
+      this.notifyActiveLighting();
+    }
+
+    let changed = false;
+    for (let index = 0; index < IPS.length; index++) {
+      const { color, brightness } = engine.map.sample(IPS[index], time);
+      const light = lights[index];
+      const r = Math.round(color[0]);
+      const g = Math.round(color[1]);
+      const b = Math.round(color[2]);
+      if (
+        light.brightness === brightness &&
+        light.color[0] === r &&
+        light.color[1] === g &&
+        light.color[2] === b
+      ) {
+        continue;
+      }
+      changed = true;
+      light.color = [r, g, b];
+      light.brightness = brightness;
+    }
+    if (changed) outputs.onLightsChange(lights);
+  };
+}
+
 /** Runs the local lighting engine every display frame to preview light state. */
 export function useLightingPreview({
   cueTimestamp,
@@ -50,131 +190,42 @@ export function useLightingPreview({
   onLightsChange,
   onActiveLightingChange,
 }: LightingPreviewOptions) {
-  const engine = useRef(createLightingEngine());
-  const frameRequest = useRef<number | undefined>(undefined);
+  const [preview] = useState(() => new LightingPreview());
 
-  const lights = useRef(createLights());
-  const onLightsChangeRef = useRef(onLightsChange);
-  const onActiveLightingChangeRef = useRef(onActiveLightingChange);
-  const clockOffsetRef = useRef(clockOffset);
-  clockOffsetRef.current = clockOffset;
-  const hubSnapshotRef = useRef(hubSnapshot);
-  hubSnapshotRef.current = hubSnapshot;
-
+  // Declared first so the effects below always call the latest callbacks.
   useEffect(() => {
-    onLightsChangeRef.current = onLightsChange;
-  }, [onLightsChange]);
-
-  useEffect(() => {
-    onActiveLightingChangeRef.current = onActiveLightingChange;
-  }, [onActiveLightingChange]);
-
-  const frame = () => {
-    frameRequest.current = requestAnimationFrame(frame);
-    const time =
-      Date.now() + (hubSnapshotRef.current ? clockOffsetRef.current : 0);
-    const { queue, sequenceColor, accentColor } = engine.current.state;
-    advanceLightingEngine(engine.current, time);
-    if (
-      queue !== engine.current.state.queue ||
-      sequenceColor !== engine.current.state.sequenceColor ||
-      accentColor !== engine.current.state.accentColor
-    ) {
-      onActiveLightingChangeRef.current(
-        getActiveLighting(engine.current.state),
-      );
-    }
-
-    let changed = false;
-    IPS.forEach((ip, index) => {
-      const { color, brightness } = engine.current.map.sample(ip, time);
-      const light = lights.current[index];
-      const rounded = color.map(Math.round) as Color;
-      if (
-        light.brightness === brightness &&
-        light.color.every((channel, i) => channel === rounded[i])
-      ) {
-        return;
-      }
-      changed = true;
-      light.color = rounded;
-      light.brightness = brightness;
+    preview.connect({
+      onLightsChange,
+      onActiveLightingChange,
+      clockOffset,
+      synced: Boolean(hubSnapshot),
     });
-    if (changed) onLightsChangeRef.current(lights.current);
-  };
+  });
 
-  const startLoop = () => {
-    if (frameRequest.current !== undefined) return;
-    resetLightingEngine(engine.current);
-    frame();
-  };
+  useEffect(() => () => preview.stop(), [preview]);
 
-  const stopLoop = () => {
-    if (frameRequest.current !== undefined) {
-      cancelAnimationFrame(frameRequest.current);
-      frameRequest.current = undefined;
-    }
-  };
+  useEffect(() => preview.cue(cueTimestamp), [preview, cueTimestamp]);
 
-  useEffect(() => () => stopLoop(), []);
+  useEffect(
+    () => preview.update({ seedShift, bpm, sequenceDimming, accentDimming }),
+    [preview, seedShift, bpm, sequenceDimming, accentDimming],
+  );
 
-  useEffect(() => {
-    engine.current.state.cueTimestamp = cueTimestamp;
-  }, [cueTimestamp]);
+  useEffect(
+    () =>
+      preview.queue({
+        sequenceColorMode,
+        sequenceColor,
+        accent,
+        accentColorMode,
+        accentColor,
+      }),
+    [preview, sequenceColorMode, sequenceColor, accent, accentColorMode, accentColor],
+  );
 
-  useEffect(() => {
-    engine.current.state.seedShift = seedShift;
-  }, [seedShift]);
-
-  useEffect(() => {
-    engine.current.state.bpm = bpm;
-  }, [bpm]);
+  useEffect(() => preview.setSequence(sequence), [preview, sequence]);
 
   useEffect(() => {
-    queueLightingUpdate(engine.current.state, {
-      sequenceColorMode,
-      sequenceColor,
-      accent,
-      accentColorMode,
-      accentColor,
-    });
-  }, [sequenceColorMode, sequenceColor, accent, accentColorMode, accentColor]);
-
-  useEffect(() => {
-    if (sequence) {
-      if (engine.current.state.activeSequence) {
-        queueLightingUpdate(engine.current.state, { sequence });
-      } else {
-        engine.current.state.activeSequence = sequence;
-        engine.current.state.runningSequence = sequence;
-      }
-      startLoop();
-    } else {
-      stopLoop();
-      engine.current.state.activeSequence = "";
-      engine.current.state.runningSequence = "";
-      delete engine.current.state.queue.sequence;
-    }
-    onActiveLightingChangeRef.current(getActiveLighting(engine.current.state));
-  }, [sequence]);
-
-  useEffect(() => {
-    engine.current.state.sequenceDimming = sequenceDimming;
-  }, [sequenceDimming]);
-
-  useEffect(() => {
-    engine.current.state.accentDimming = accentDimming;
-  }, [accentDimming]);
-
-  useEffect(() => {
-    if (!hubSnapshot) return;
-    engine.current.state = {
-      ...hubSnapshot.lighting,
-      queue: { ...hubSnapshot.lighting.queue },
-    };
-    resetLightingEngine(engine.current);
-    if (engine.current.state.activeSequence) startLoop();
-    else stopLoop();
-    onActiveLightingChangeRef.current(getActiveLighting(engine.current.state));
-  }, [hubSnapshot]);
+    if (hubSnapshot) preview.mirror(hubSnapshot);
+  }, [preview, hubSnapshot]);
 }

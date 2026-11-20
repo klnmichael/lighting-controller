@@ -1,5 +1,8 @@
 import { IPS } from "./constants.ts";
 
+/** Ticks (16th notes) per beat; the engine and every output run on this grid. */
+export const TICKS_PER_BEAT = 4;
+
 export interface TimelinePosition {
   /** Beat within the 16-beat bar. */
   beat: number;
@@ -17,7 +20,7 @@ export const mulberry32 = (seed: number) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
-const hashString = (value: string) => {
+export const hashString = (value: string) => {
   let hash = 0;
   for (let i = 0; i < value.length; i++)
     hash = Math.imul(hash ^ value.charCodeAt(i), 0x01000193);

@@ -135,43 +135,61 @@ const stopLoop = () => {
   goveeSender?.reset();
 };
 
+// Toggling playback back on resumes whatever sequence was last played.
+let lastSequence = "shuffle";
+
+const startSequence = (sequence: string) => {
+  lastSequence = sequence;
+  // While the loop is running (a sequence is playing or a cue started it),
+  // queue the sequence so it comes in on the next bar.
+  if (running && sequence !== lighting.activeSequence) {
+    queueLightingUpdate(lighting, { sequence });
+  } else {
+    delete lighting.queue.sequence;
+    lighting.cueTimestamp = Date.now();
+    lighting.activeSequence = sequence;
+    lighting.runningSequence = sequence;
+    startLoop();
+  }
+};
+
+/** Stop the loop and clear the sequence (and optionally the accent). */
+const stopPlayback = ({ accent }: { accent: boolean }) => {
+  stopLoop();
+  lighting.cueTimestamp = 0;
+  lighting.activeSequence = "";
+  lighting.runningSequence = "";
+  delete lighting.queue.sequence;
+  if (accent) {
+    lighting.activeAccent = "";
+    lighting.runningAccent = "";
+    delete lighting.queue.accent;
+  }
+};
+
 const applyCommand = (command: HubCommand) => {
   console.log(command);
   switch (command.type) {
     case "toggle":
-      stopLoop();
-      lighting.cueTimestamp = 0;
-      lighting.activeSequence = "";
-      lighting.runningSequence = "";
-      delete lighting.queue.sequence;
+      // Stop everything that is playing, sequence and accent alike.
+      if (running && (lighting.activeSequence || lighting.activeAccent)) {
+        stopPlayback({ accent: true });
+      } else {
+        startSequence(lastSequence);
+      }
       break;
     case "cue":
+      // Cueing starts the beat loop without starting a sequence.
       lighting.cueTimestamp = Date.now();
       lighting.seedShift = command.seedShift;
+      startLoop();
       break;
     case "bpm":
       lighting.bpm = command.bpm;
       break;
     case "sequence":
-      if (command.sequence) {
-        if (
-          lighting.activeSequence &&
-          command.sequence !== lighting.activeSequence
-        ) {
-          queueLightingUpdate(lighting, { sequence: command.sequence });
-        } else {
-          delete lighting.queue.sequence;
-          lighting.cueTimestamp = Date.now();
-          lighting.activeSequence = command.sequence;
-          lighting.runningSequence = command.sequence;
-          startLoop();
-        }
-      } else {
-        stopLoop();
-        lighting.activeSequence = "";
-        lighting.runningSequence = "";
-        delete lighting.queue.sequence;
-      }
+      if (command.sequence) startSequence(command.sequence);
+      else stopPlayback({ accent: false });
       break;
     case "sequenceDimming":
       lighting.sequenceDimming = command.value;
@@ -182,9 +200,13 @@ const applyCommand = (command: HubCommand) => {
     default:
       queueLightingUpdate(lighting, { [command.type]: command.value });
   }
-  broadcast();
 };
 
+/** Apply commands and send clients a single state update for all of them. */
+const applyCommands = (commands: readonly HubCommand[]) => {
+  for (const command of commands) applyCommand(command);
+  broadcast();
+};
 
 app.get("/settings", (_req, res) => {
   res.json({
@@ -228,13 +250,12 @@ app.post(
           value,
         }));
     }
-    if (candidates.length === 0 || !candidates.every(isHubCommand)) {
+    const commands = candidates.filter(isHubCommand);
+    if (commands.length === 0 || commands.length !== candidates.length) {
       res.status(400).json({ error: "Invalid command" });
       return;
     }
-    for (const command of candidates) {
-      if (isHubCommand(command)) applyCommand(command);
-    }
+    applyCommands(commands);
     res.json({});
   },
 );
@@ -304,7 +325,7 @@ websocketServer.on("connection", (socket) => {
         }),
       );
     } else if (isHubCommand(message)) {
-      applyCommand(message);
+      applyCommands([message]);
     } else {
       socket.send(
         JSON.stringify({ type: "error", message: "Invalid command", lighting }),

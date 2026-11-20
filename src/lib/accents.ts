@@ -75,4 +75,4 @@ export const accents: Record<string, LightingPattern<AccentTimelineData>> = {
   },
 };
 
-export const accentOrder = ["one", "drum3", "drum6", "snare3", "snare6"];
+export const accentOrder = ["drum3", "drum6", "snare3", "snare6", "one"];

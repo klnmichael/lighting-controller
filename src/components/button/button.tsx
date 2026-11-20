@@ -3,12 +3,11 @@
 import { ButtonHTMLAttributes } from "react";
 import styles from "./button.module.scss";
 
-export interface ButtonProps {}
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  onPress?: () => void;
+};
 
-const Button = ({
-  onPress,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { onPress?: () => void }) => {
+const Button = ({ onPress, ...props }: ButtonProps) => {
   return (
     <button
       type="button"
